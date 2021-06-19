@@ -20,7 +20,7 @@ namespace Sandblox
 			this.offset = offset;
 
 			var material = Material.Load( "materials/voxel/voxel.vmat" );
-			mesh = Mesh.Create( material );
+			mesh = new Mesh( material );
 			mesh.CreateVertexBuffer<BlockVertex>( MaxFaceCount * 6, BlockVertex.Layout );
 
 			var boundsMin = Vector3.Zero;
@@ -29,7 +29,9 @@ namespace Sandblox
 
 			Rebuild();
 
-			model = Model.Create( mesh );
+			model = new ModelBuilder()
+				.AddMesh( mesh )
+				.Create();
 
 			var transform = new Transform( new Vector3( offset.x, offset.y, offset.z ) * 32.0f );
 			sceneObject = new SceneObject( model, transform );

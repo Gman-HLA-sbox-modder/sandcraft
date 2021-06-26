@@ -39,11 +39,6 @@ namespace Sandblox
 
 		public void Delete()
 		{
-			if ( mesh.IsValid )
-			{
-				mesh.DeleteBuffers();
-			}
-
 			if ( sceneObject != null )
 			{
 				sceneObject.Delete();

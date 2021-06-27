@@ -3,6 +3,12 @@ using System;
 
 namespace Sandblox
 {
+	public struct MapChunkRange
+	{
+		public int start;
+		public int end;
+	}
+
 	public class Map
 	{
 		private readonly byte[] blockdata = null;
@@ -15,13 +21,16 @@ namespace Sandblox
 		private readonly int sizeX;
 		private readonly int sizeY;
 		private readonly int sizeZ;
+		private readonly int seed;
 
+		public int Seed => seed;
 		public int SizeX => sizeX;
 		public int SizeY => sizeY;
 		public int SizeZ => sizeZ;
 
-		public Map( int sizeX, int sizeY, int sizeZ )
+		public Map( int seed, int sizeX, int sizeY, int sizeZ )
 		{
+			this.seed = seed;
 			this.sizeX = sizeX;
 			this.sizeY = sizeY;
 			this.sizeZ = sizeZ;
@@ -45,26 +54,6 @@ namespace Sandblox
 						int blockIndex = GetBlockIndex( x, y, z );
 						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 2, 2 )) : 0);
 						healthdata[blockIndex] = (byte)Rand.Int( 1, 15 );
-					}
-				}
-			}
-		}
-
-		public void GenerateGround()
-		{
-			for ( int x = 0; x < sizeX; ++x )
-			{
-				for ( int y = 0; y < sizeY; ++y )
-				{
-					int height = 10;
-					if ( height <= 0 ) height = 1;
-					if ( height > sizeZ ) height = sizeZ;
-
-					for ( int z = 0; z < sizeZ; ++z )
-					{
-						int blockIndex = GetBlockIndex( x, y, z );
-						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 1, 5 )) : 0);
-						healthdata[blockIndex] = (byte)Rand.Int( 1, 255 );
 					}
 				}
 			}
@@ -125,9 +114,85 @@ namespace Sandblox
 			return blockdata[blockIndex] == 0;
 		}
 
+		public IntVector3 ToChunkPosition( Vector3 position )
+		{
+			var posOnGrid = (position / 32f);
+			var chunkSize = Chunk.ChunkSize;
+			var numChunksX = sizeX / chunkSize;
+			var numChunksY = sizeY / chunkSize;
+			var numChunksZ = sizeZ / chunkSize;
+			var x = (int)posOnGrid.x / chunkSize;
+			var y = (int)posOnGrid.y / chunkSize;
+			var z = (int)posOnGrid.z / chunkSize;
+
+			return new IntVector3(
+				Math.Clamp( x, 0, numChunksX - 1 ),
+				Math.Clamp( y, 0, numChunksY - 1 ),
+				Math.Clamp( z, 0, numChunksZ - 1 )
+			);
+		}
+
+		public bool IsValidChunkAt( Vector3 position )
+		{
+			var posOnGrid = (position / 32f);
+			var chunkSize = Chunk.ChunkSize;
+			var numChunksX = sizeX / chunkSize;
+			var numChunksY = sizeY / chunkSize;
+			var numChunksZ = sizeZ / chunkSize;
+			var maxIndex = numChunksX * numChunksY * numChunksZ;
+			var x = (int)posOnGrid.x / chunkSize;
+			var y = (int)posOnGrid.y / chunkSize;
+			var z = (int)posOnGrid.z / chunkSize;
+			var index = x + y * numChunksX + z * numChunksX * numChunksY;
+			return (index >= 0 && index < maxIndex);
+		}
+
+		public int ToChunkIndex( Vector3 position )
+		{
+			var posOnGrid = (position / 32f);
+			var chunkSize = Chunk.ChunkSize;
+			var numChunksX = sizeX / chunkSize;
+			var numChunksY = sizeY / chunkSize;
+			var numChunksZ = sizeZ / chunkSize;
+			var maxIndex = numChunksX * numChunksY * numChunksZ;
+			var x = (int)posOnGrid.x / chunkSize;
+			var y = (int)posOnGrid.y / chunkSize;
+			var z = (int)posOnGrid.z / chunkSize;
+			return Math.Clamp( x + y * numChunksX + z * numChunksX * numChunksY, 0, maxIndex - 1 );
+		}
+
 		public int GetBlockIndex( int x, int y, int z )
 		{
 			return x + y * sizeX + z * sizeX * sizeY;
+		}
+
+		public byte[] GetChunkData( int x, int y, int z )
+		{
+			var chunkSize = Chunk.ChunkSize;
+			var data = new byte[(chunkSize * chunkSize * chunkSize) * 2];
+
+			for ( int lx = 0; lx < chunkSize; ++lx )
+			{
+				for ( int ly = 0; ly < chunkSize; ++ly )
+				{
+					for ( int lz = 0; lz < chunkSize; ++lz )
+					{
+						var offset = new IntVector3( x * chunkSize, y * chunkSize, z * chunkSize );
+						var mx = offset.x + lx;
+						var my = offset.y + ly;
+						var mz = offset.z + lz;
+
+						var blockIndex = Game.map.GetBlockIndex( mx, my, mz );
+						var blockType = Game.map.GetBlockData( blockIndex );
+						var blockHealth = Game.map.GetBlockBrightness( blockIndex );
+						var localBlockIndex = (lx + ly * chunkSize + lz * chunkSize * chunkSize) * 2;
+						data[localBlockIndex] = blockType;
+						data[localBlockIndex + 1] = blockHealth;
+					}
+				}
+			}
+
+			return data;
 		}
 
 		public byte GetBlockData( int x, int y, int z )

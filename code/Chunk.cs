@@ -27,14 +27,24 @@ namespace Sandblox
 			var boundsMax = boundsMin + (new Vector3( ChunkSize ) * 32);
 			mesh.SetBounds( boundsMin, boundsMax );
 
-			Rebuild();
-
 			model = new ModelBuilder()
 				.AddMesh( mesh )
 				.Create();
 
 			var transform = new Transform( new Vector3( offset.x, offset.y, offset.z ) * 32.0f );
 			sceneObject = new SceneObject( model, transform );
+		}
+
+		public void Enable()
+		{
+			if ( sceneObject != null )
+				sceneObject.RenderingEnabled = true;
+		}
+
+		public void Disable()
+		{
+			if ( sceneObject != null )
+				sceneObject.RenderingEnabled = false;
 		}
 
 		public void Delete()

@@ -9,8 +9,8 @@ namespace Sandblox
 			var pawn = Local.Pawn;
 			if ( pawn == null ) return;
 
-			Pos = pawn.EyePos;
-			Rot = pawn.EyeRot;
+			Position = pawn.EyePos;
+			Rotation = pawn.EyeRot;
 		}
 
 		public override void Update()
@@ -18,8 +18,8 @@ namespace Sandblox
 			var pawn = Local.Pawn;
 			if ( pawn == null ) return;
 
-			Pos = pawn.EyePos;
-			Rot = pawn.EyeRot;
+			Position = pawn.EyePos;
+			Rotation = pawn.EyeRot;
 
 			FieldOfView = 80;
 

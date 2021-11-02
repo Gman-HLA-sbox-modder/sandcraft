@@ -4,6 +4,7 @@ using System.Collections.Generic;
 namespace Sandblox
 {
 	[Library( "sandblox" )]
+	[Hammer.Skip]
 	public partial class Game : Sandbox.Game
 	{
 		private readonly Map map;

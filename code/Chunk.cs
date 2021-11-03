@@ -1,5 +1,6 @@
 ﻿using Sandbox;
 using System;
+using System.Collections.Generic;
 
 namespace Sandblox
 {
@@ -27,7 +28,13 @@ namespace Sandblox
 			var boundsMax = boundsMin + (new Vector3( ChunkSize ) * 32);
 			mesh.SetBounds( boundsMin, boundsMax );
 
-			Rebuild();
+			for ( int i = 0; i < Slices.Length; ++i )
+			{
+				Slices[i] = new Slice();
+			}
+
+			UpdateBlockSlices();
+			Build();
 
 			model = new ModelBuilder()
 				.AddMesh( mesh )
@@ -46,12 +53,25 @@ namespace Sandblox
 			}
 		}
 
-		public void Rebuild()
+		public void Build()
 		{
-			if ( mesh.IsValid )
+			if ( !mesh.IsValid )
+				return;
+
+			int vertexCount = 0;
+
+			foreach ( var slice in Slices )
 			{
-				mesh.LockVertexBuffer<BlockVertex>( Rebuild );
+				slice.dirty = false;
+
+				if ( slice.vertices.Count == 0 )
+					continue;
+
+				mesh.SetVertexBufferData<BlockVertex>( slice.vertices.ToArray(), vertexCount );
+				vertexCount += slice.vertices.Count;
 			}
+
+			mesh.SetVertexRange( 0, vertexCount );
 		}
 
 		static readonly IntVector3[] BlockVertices = new[]
@@ -68,28 +88,30 @@ namespace Sandblox
 
 		static readonly int[] BlockIndices = new[]
 		{
-			2, 1, 0, 0, 3, 2,
-			5, 6, 7, 7, 4, 5,
-			5, 4, 0, 0, 1, 5,
-			6, 5, 1, 1, 2, 6,
-			7, 6, 2, 2, 3, 7,
-			4, 7, 3, 3, 0, 4,
+			2, 1, 0, 0, 3, 2, // 0
+			5, 6, 7, 7, 4, 5, // 1
+			4, 7, 3, 3, 0, 4, // 5
+			6, 5, 1, 1, 2, 6, // 3
+			5, 4, 0, 0, 1, 5, // 2
+			7, 6, 2, 2, 3, 7, // 4
 		};
 
 		static readonly IntVector3[] BlockDirections = new[]
 		{
-			new IntVector3( 0, 0, 1 ),
-			new IntVector3( 0, 0, -1 ),
-			new IntVector3( -1, 0, 0 ),
-			new IntVector3( 0, 1, 0 ),
-			new IntVector3( 1, 0, 0 ),
-			new IntVector3( 0, -1, 0 ),
+			new IntVector3( 0, 0, 1 ), // 0
+			new IntVector3( 0, 0, -1 ), // 1
+			new IntVector3( 0, -1, 0 ), // 5
+			new IntVector3( 0, 1, 0 ), // 3
+			new IntVector3( -1, 0, 0 ), // 2
+			new IntVector3( 1, 0, 0 ), // 4
 		};
 
 		static readonly int[] BlockDirectionAxis = new[]
 		{
-			2, 2, 0, 1, 0, 1
+			2, 2, 1, 1, 0, 0
 		};
+
+		public static int GetOppositeDirection( int direction ) { return direction + ((direction % 2 != 0) ? -1 : 1); }
 
 		private static void AddQuad( Span<BlockVertex> vertices, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
 		{
@@ -110,6 +132,25 @@ namespace Sandblox
 			}
 		}
 
+		private static void AddQuad( List<BlockVertex> vertices, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
+		{
+			byte textureId = (byte)(blockType - 1);
+			byte normal = (byte)face;
+			uint faceData = (uint)((textureId & 31) << 18 | brightness | (normal & 7) << 27);
+
+			for ( int i = 0; i < 6; ++i )
+			{
+				int vi = BlockIndices[(face * 6) + i];
+				var vOffset = BlockVertices[vi];
+
+				// scale the vertex across the width and height of the face
+				vOffset[widthAxis] *= width;
+				vOffset[heightAxis] *= height;
+
+				vertices.Add( new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), faceData ) );
+			}
+		}
+
 		private struct BlockFace
 		{
 			public bool culled;
@@ -123,7 +164,15 @@ namespace Sandblox
 			}
 		};
 
+		private class Slice
+		{
+			public bool dirty = false;
+			public List<BlockVertex> vertices = new();
+		}
+
 		static readonly BlockFace[] BlockFaceMask = new BlockFace[ChunkSize * ChunkSize * ChunkSize];
+
+		private readonly Slice[] Slices = new Slice[ChunkSize * 6];
 
 		BlockFace GetBlockFace( IntVector3 position, int side )
 		{
@@ -155,9 +204,177 @@ namespace Sandblox
 			return face;
 		}
 
-		private void Rebuild( Span<BlockVertex> vertices )
+		static int GetSliceIndex( int position, int direction )
+		{
+			int sliceIndex = 0;
+
+			for ( int i = 0; i < direction; ++i )
+			{
+				sliceIndex += ChunkSize;
+			}
+
+			sliceIndex += position;
+
+			return sliceIndex;
+		}
+
+		public void UpdateBlockSlice( IntVector3 position, int direction )
 		{
 			int vertexOffset = 0;
+			int axis = BlockDirectionAxis[direction];
+			int sliceIndex = GetSliceIndex( position[axis], direction );
+			var slice = Slices[sliceIndex];
+
+			if ( slice.dirty )
+			{
+				// already calculated this slice
+				return;
+			}
+
+			slice.dirty = true;
+			slice.vertices.Clear();
+			BlockFace faceA;
+			BlockFace faceB;
+
+			// 2 other axis
+			int uAxis = (axis + 1) % 3;
+			int vAxis = (axis + 2) % 3;
+
+			int faceSide = direction;
+
+			var blockPosition = new IntVector3( 0, 0, 0 );
+			blockPosition[axis] = position[axis];
+			var blockOffset = BlockDirections[direction];
+
+			bool maskEmpty = true;
+
+			int n = 0;
+
+			// loop through the 2 other axis
+			for ( blockPosition[vAxis] = 0; blockPosition[vAxis] < ChunkSize; blockPosition[vAxis]++ )
+			{
+				for ( blockPosition[uAxis] = 0; blockPosition[uAxis] < ChunkSize; blockPosition[uAxis]++ )
+				{
+					faceB = new()
+					{
+						culled = true,
+						side = (byte)faceSide,
+						type = 0,
+						brightness = 0
+					};
+
+					// face of this block
+					faceA = GetBlockFace( blockPosition, faceSide );
+
+					if ( (blockPosition[axis] + blockOffset[axis]) < ChunkSize )
+					{
+						// adjacent face on axis
+						faceB = GetBlockFace( blockPosition + blockOffset, faceSide );
+					}
+
+					if ( !faceA.culled && !faceB.culled && faceA.Equals( faceB ) )
+					{
+						BlockFaceMask[n].culled = true;
+					}
+					else
+					{
+						BlockFaceMask[n] = faceA;
+
+						if ( !faceA.culled )
+						{
+							maskEmpty = false;
+						}
+					}
+
+					n++;
+				}
+			}
+
+			if ( maskEmpty )
+			{
+				// mask has no faces, no point going any further
+				return;
+			}
+
+			n = 0;
+
+			for ( int j = 0; j < ChunkSize; j++ )
+			{
+				for ( int i = 0; i < ChunkSize; )
+				{
+					if ( BlockFaceMask[n].culled )
+					{
+						i++;
+						n++;
+
+						// if this face doesn't exist then no face is added
+						continue;
+					}
+
+					int faceWidth;
+					int faceHeight;
+
+					// calculate the face width by checking if adjacent face is the same
+					for ( faceWidth = 1; i + faceWidth < ChunkSize && !BlockFaceMask[n + faceWidth].culled && BlockFaceMask[n + faceWidth].Equals( BlockFaceMask[n] ); faceWidth++ ) ;
+
+					// calculate the face height by checking if adjacent face is the same
+
+					bool done = false;
+
+					for ( faceHeight = 1; j + faceHeight < ChunkSize; faceHeight++ )
+					{
+						for ( int k = 0; k < faceWidth; k++ )
+						{
+							var maskFace = BlockFaceMask[n + k + faceHeight * ChunkSize];
+
+							// face doesn't exist or there's a new type of face
+							if ( maskFace.culled || !maskFace.Equals( BlockFaceMask[n] ) )
+							{
+								// finished, got the face height
+								done = true;
+
+								break;
+							}
+						}
+
+						if ( done )
+						{
+							// finished, got the face height
+							break;
+						}
+					}
+
+					if ( !BlockFaceMask[n].culled )
+					{
+						blockPosition[uAxis] = i;
+						blockPosition[vAxis] = j;
+
+						var brightness = (BlockFaceMask[n].brightness & 15) << 23;
+
+						AddQuad( slice.vertices,
+							blockPosition.x, blockPosition.y, blockPosition.z,
+							faceWidth, faceHeight, uAxis, vAxis,
+							BlockFaceMask[n].side, BlockFaceMask[n].type, brightness );
+
+						vertexOffset += 6;
+					}
+
+					for ( int l = 0; l < faceHeight; ++l )
+					{
+						for ( int k = 0; k < faceWidth; ++k )
+						{
+							BlockFaceMask[n + k + l * ChunkSize].culled = true;
+						}
+					}
+
+					i += faceWidth;
+					n += faceWidth;
+				}
+			}
+		}
+
+		private void UpdateBlockSlices()
+		{
 			IntVector3 blockPosition;
 			IntVector3 blockOffset;
 
@@ -180,6 +397,11 @@ namespace Sandblox
 				{
 					int n = 0;
 					bool maskEmpty = true;
+
+					int sliceIndex = GetSliceIndex( blockPosition[axis], faceSide );
+					var slice = Slices[sliceIndex];
+					slice.dirty = true;
+					slice.vertices.Clear();
 
 					for ( blockPosition[vAxis] = 0; blockPosition[vAxis] < ChunkSize; blockPosition[vAxis]++ )
 					{
@@ -281,12 +503,10 @@ namespace Sandblox
 
 								var brightness = (BlockFaceMask[n].brightness & 15) << 23;
 
-								AddQuad( vertices.Slice( vertexOffset, 6 ),
+								AddQuad( slice.vertices,
 									blockPosition.x, blockPosition.y, blockPosition.z,
 									faceWidth, faceHeight, uAxis, vAxis,
 									BlockFaceMask[n].side, BlockFaceMask[n].type, brightness );
-
-								vertexOffset += 6;
 							}
 
 							for ( int l = 0; l < faceHeight; ++l )
@@ -303,8 +523,6 @@ namespace Sandblox
 					}
 				}
 			}
-
-			mesh.SetVertexRange( 0, vertexOffset );
 		}
 	}
 }

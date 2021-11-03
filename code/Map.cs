@@ -8,8 +8,8 @@ namespace Sandblox
 		private readonly byte[] blockdata = null;
 		private readonly byte[] healthdata = null;
 
-		private readonly static int[] xOffsets = new[] { 0, 0, -1, 0, 1, 0 };
-		private readonly static int[] yOffsets = new[] { 0, 0, 0, 1, 0, -1 };
+		private readonly static int[] xOffsets = new[] { 0, 0, 0, 0, -1, 1 };
+		private readonly static int[] yOffsets = new[] { 0, 0, -1, 1, 0, 0 };
 		private readonly static int[] zOffsets = new[] { 1, -1, 0, 0, 0, 0 };
 
 		private readonly int sizeX;
@@ -43,7 +43,7 @@ namespace Sandblox
 					for ( int z = 0; z < sizeZ; ++z )
 					{
 						int blockIndex = GetBlockIndex( x, y, z );
-						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 1, 5 )) : 0);
+						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 2, 2 )) : 0);
 						healthdata[blockIndex] = 15;// (byte)Rand.Int( 1, 15 );
 					}
 				}
@@ -177,10 +177,10 @@ namespace Sandblox
 			Invalid = -1,
 			Top = 0,
 			Bottom = 1,
-			South = 2,
+			West = 2,
 			East = 3,
-			North = 4,
-			West = 5,
+			South = 4,
+			North = 5,
 		};
 
 		public BlockFace GetBlockInDirection( Vector3 position, Vector3 direction, float length, out IntVector3 hitPosition, out float distance )

@@ -17,7 +17,7 @@ namespace Sandblox
 				_ = new HudEntity();
 			}
 
-			map = new Map( 512, 512, 128 );
+			map = new Map( 256, 256, 64 );
 			map.GeneratePerlin();
 
 			if ( IsClient )
@@ -51,6 +51,9 @@ namespace Sandblox
 			{
 				foreach ( var chunk in chunks )
 				{
+					if ( chunk == null )
+						continue;
+
 					chunk.Delete();
 				}
 			}
@@ -107,6 +110,17 @@ namespace Sandblox
 							chunkids.Add( chunkIndex );
 
 							build = true;
+
+							for ( int i = 0; i < 6; i++ )
+							{
+								if ( map.IsAdjacentBlockEmpty( x3, y3, z3, i ) )
+									continue;
+
+								var adjacentPos = Map.GetAdjacentPos( x3, y3, z3, i );
+								var adjadentChunkIndex = (adjacentPos.x / Chunk.ChunkSize) + (adjacentPos.y / Chunk.ChunkSize) * numChunksX + (adjacentPos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
+
+								chunkids.Add( adjadentChunkIndex );
+							}
 						}
 					}
 				}

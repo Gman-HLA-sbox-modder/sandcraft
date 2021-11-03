@@ -15,15 +15,33 @@ namespace Sandblox
 			this.z = z;
 		}
 
-		public int Get( int index )
+		public static IntVector3 operator +( IntVector3 c1, IntVector3 c2 )
 		{
-			return index switch
+			return new IntVector3( c1.x + c2.x, c1.y + c2.y, c1.z + c2.z );
+		}
+
+		public int this[int index]
+		{
+			get
 			{
-				0 => x,
-				1 => y,
-				2 => z,
-				_ => throw new IndexOutOfRangeException(),
-			};
+				return index switch
+				{
+					0 => x,
+					1 => y,
+					2 => z,
+					_ => throw new IndexOutOfRangeException(),
+				};
+			}
+
+			set
+			{
+				switch ( index )
+				{
+					case 0: x = value; break;
+					case 1: y = value; break;
+					case 2: z = value; break;
+				}
+			}
 		}
 	}
 }

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 
 namespace Sandblox
 {
-	[Library( "sandblox" )]
-	[Hammer.Skip]
 	public partial class Game : Sandbox.Game
 	{
 		private readonly Map map;
@@ -22,9 +20,9 @@ namespace Sandblox
 
 			if ( IsClient )
 			{
-				var numChunksX = map.SizeX / Chunk.ChunkSize;
-				var numChunksY = map.SizeY / Chunk.ChunkSize;
-				var numChunksZ = map.SizeZ / Chunk.ChunkSize;
+				var numChunksX = map.NumChunksX;
+				var numChunksY = map.NumChunksY;
+				var numChunksZ = map.NumChunksZ;
 
 				chunks = new Chunk[(numChunksX * numChunksY * numChunksZ)];
 

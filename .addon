@@ -1,19 +1,5 @@
 {
-		"name": "sandblox",
-		"sharedassets": "*.*",
-		
-		"depends": 
-		[
-			"base",
-			"citizen"
-		],
-
-		"gamemodes":
-		[
-			{
-				"name": "sandblox",
-				"title": "sandblox",
-				"description": "Voxel rendering experiment (not currently networked)"
-			}
-		]
+	"sharedassets": "*.*",
+	"type": "game",
+	"ident": "facepunch.sandblox"
 }

@@ -12,9 +12,17 @@ namespace Sandblox
 		private readonly int sizeY;
 		private readonly int sizeZ;
 
+		private readonly int numChunksX;
+		private readonly int numChunksY;
+		private readonly int numChunksZ;
+
 		public int SizeX => sizeX;
 		public int SizeY => sizeY;
 		public int SizeZ => sizeZ;
+
+		public int NumChunksX => numChunksX;
+		public int NumChunksY => numChunksY;
+		public int NumChunksZ => numChunksZ;
 
 		public Map( int sizeX, int sizeY, int sizeZ )
 		{
@@ -22,8 +30,17 @@ namespace Sandblox
 			this.sizeY = sizeY;
 			this.sizeZ = sizeZ;
 
+			numChunksX = sizeX / Chunk.ChunkSize;
+			numChunksY = sizeY / Chunk.ChunkSize;
+			numChunksZ = sizeZ / Chunk.ChunkSize;
+
 			blockdata = new byte[this.sizeX * this.sizeY * this.sizeZ];
 			healthdata = new byte[this.sizeX * this.sizeY * this.sizeZ];
+		}
+
+		public int GetBlockChunkIndex( IntVector3 pos )
+		{
+			return (pos.x / Chunk.ChunkSize) + (pos.y / Chunk.ChunkSize) * numChunksX + (pos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
 		}
 
 		public void GeneratePerlin()

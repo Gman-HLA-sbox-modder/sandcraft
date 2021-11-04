@@ -85,12 +85,9 @@ namespace Sandblox
 			bool build = false;
 			var chunkids = new HashSet<int>();
 
-			var numChunksX = map.SizeX / Chunk.ChunkSize;
-			var numChunksY = map.SizeY / Chunk.ChunkSize;
-
 			if ( map.SetBlock( blockPos, blocktype ) )
 			{
-				var chunkIndex = (blockPos.x / Chunk.ChunkSize) + (blockPos.y / Chunk.ChunkSize) * numChunksX + (blockPos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
+				var chunkIndex = map.GetBlockChunkIndex( blockPos );
 
 				chunkids.Add( chunkIndex );
 
@@ -106,7 +103,7 @@ namespace Sandblox
 					}
 
 					var adjacentPos = Map.GetAdjacentPos( blockPos, i );
-					var adjadentChunkIndex = (adjacentPos.x / Chunk.ChunkSize) + (adjacentPos.y / Chunk.ChunkSize) * numChunksX + (adjacentPos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
+					var adjadentChunkIndex = map.GetBlockChunkIndex( adjacentPos );
 					var adjacentPosInChunk = new IntVector3( adjacentPos.x % Chunk.ChunkSize, adjacentPos.y % Chunk.ChunkSize, adjacentPos.z % Chunk.ChunkSize );
 
 					chunkids.Add( adjadentChunkIndex );

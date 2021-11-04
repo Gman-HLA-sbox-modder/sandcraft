@@ -27,7 +27,7 @@ namespace Sandblox
 			}
 			else if ( (input.Down( InputButton.Duck ) ? input.Down( InputButton.Attack2 ) : input.Pressed( InputButton.Attack2 )) )
 			{
-				//(Sandbox.Game.Current as Game).SetBlock( EyePos, EyeRot.Forward, 0 );
+				(Sandbox.Game.Current as Game).SetBlock( EyePos, EyeRot.Forward, 0 );
 			}
 		}
 	}

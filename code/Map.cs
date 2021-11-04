@@ -8,10 +8,6 @@ namespace Sandblox
 		private readonly byte[] blockdata = null;
 		private readonly byte[] healthdata = null;
 
-		private readonly static int[] xOffsets = new[] { 0, 0, 0, 0, -1, 1 };
-		private readonly static int[] yOffsets = new[] { 0, 0, -1, 1, 0, 0 };
-		private readonly static int[] zOffsets = new[] { 1, -1, 0, 0, 0, 0 };
-
 		private readonly int sizeX;
 		private readonly int sizeY;
 		private readonly int sizeZ;
@@ -42,7 +38,7 @@ namespace Sandblox
 
 					for ( int z = 0; z < sizeZ; ++z )
 					{
-						int blockIndex = GetBlockIndex( x, y, z );
+						int blockIndex = GetBlockIndex( new IntVector3( x, y, z ) );
 						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 2, 2 )) : 0);
 						healthdata[blockIndex] = (byte)Rand.Int( 1, 15 );
 					}
@@ -62,7 +58,7 @@ namespace Sandblox
 
 					for ( int z = 0; z < sizeZ; ++z )
 					{
-						int blockIndex = GetBlockIndex( x, y, z );
+						int blockIndex = GetBlockIndex( new IntVector3( x, y, z ) );
 						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 1, 5 )) : 0);
 						healthdata[blockIndex] = (byte)Rand.Int( 1, 255 );
 					}
@@ -70,13 +66,13 @@ namespace Sandblox
 			}
 		}
 
-		public bool SetBlock( int x, int y, int z, byte blocktype, byte health = 15 )
+		public bool SetBlock( IntVector3 pos, byte blocktype, byte health = 15 )
 		{
-			if ( x < 0 || x >= sizeX ) return false;
-			if ( y < 0 || y >= sizeY ) return false;
-			if ( z < 0 || z >= sizeZ ) return false;
+			if ( pos.x < 0 || pos.x >= sizeX ) return false;
+			if ( pos.y < 0 || pos.y >= sizeY ) return false;
+			if ( pos.z < 0 || pos.z >= sizeZ ) return false;
 
-			int blockindex = GetBlockIndex( x, y, z );
+			int blockindex = GetBlockIndex( pos );
 			int curBlocktype = GetBlockData( blockindex );
 
 			if ( blocktype == curBlocktype && health == healthdata[blockindex] )
@@ -95,71 +91,65 @@ namespace Sandblox
 			return false;
 		}
 
-		public static IntVector3 GetAdjacentPos( int x, int y, int z, int side )
+		public static IntVector3 GetAdjacentPos( IntVector3 pos, int side )
 		{
-			int adjacentX = x + xOffsets[side];
-			int adjacentY = y + yOffsets[side];
-			int adjacentZ = z + zOffsets[side];
-
-			return new IntVector3( adjacentX, adjacentY, adjacentZ );
+			return pos + Chunk.BlockDirections[side];
 		}
 
-		public bool IsAdjacentBlockEmpty( int x, int y, int z, int side )
+		public bool IsAdjacentBlockEmpty( IntVector3 pos, int side )
 		{
-			int adjacentX = x + xOffsets[side];
-			int adjacentY = y + yOffsets[side];
-			int adjacentZ = z + zOffsets[side];
+			var adjacentPos = GetAdjacentPos( pos, side );
 
-			if ( adjacentX < 0 || adjacentX >= sizeX ||
-				 adjacentY < 0 || adjacentY >= sizeY )
+			if ( adjacentPos.x < 0 || adjacentPos.x >= sizeX ||
+				 adjacentPos.y < 0 || adjacentPos.y >= sizeY )
 			{
 				return true;
 			}
 
-			if ( adjacentZ < 0 || adjacentZ >= sizeZ )
+			if ( adjacentPos.z < 0 || adjacentPos.z >= sizeZ )
 			{
 				return true;
 			}
 
-			if ( adjacentZ >= sizeZ )
+			if ( adjacentPos.z >= sizeZ )
 			{
 				return true;
 			}
 
-			var blockIndex = GetBlockIndex( adjacentX, adjacentY, adjacentZ );
+			var blockIndex = GetBlockIndex( adjacentPos );
 			return blockdata[blockIndex] == 0;
 		}
 
-		public bool IsBlockEmpty( int x, int y, int z )
+		public bool IsBlockEmpty( IntVector3 pos )
 		{
-			if ( x < 0 || x >= sizeX ||
-				 y < 0 || y >= sizeY )
+			if ( pos.x < 0 || pos.x >= sizeX ||
+				 pos.y < 0 || pos.y >= sizeY )
 			{
 				return true;
 			}
 
-			if ( z < 0 || z >= sizeZ )
+			if ( pos.z < 0 || pos.z >= sizeZ )
 			{
 				return true;
 			}
 
-			if ( z >= sizeZ )
+			if ( pos.z >= sizeZ )
 			{
 				return true;
 			}
 
-			var blockIndex = GetBlockIndex( x, y, z );
+			var blockIndex = GetBlockIndex( pos );
 			return blockdata[blockIndex] == 0;
 		}
 
-		public int GetBlockIndex( int x, int y, int z )
+		public int GetBlockIndex( IntVector3 pos )
 		{
-			return x + y * sizeX + z * sizeX * sizeY;
+			return pos.x + pos.y * sizeX + pos.z * sizeX * sizeY;
 		}
 
-		public byte GetBlockData( int x, int y, int z )
+		public byte GetBlockData( IntVector3 pos )
 		{
-			return blockdata[GetBlockIndex( x, y, z )];
+			return blockdata[GetBlockIndex( pos )];
 		}
 
 		public byte GetBlockData( int index )
@@ -278,7 +268,7 @@ namespace Sandblox
 				// if there is a block at the current position, we have an intersection
 				position3i = new( (int)position3f.x, (int)position3f.y, (int)position3f.z );
 
-				byte blockType = GetBlockData( position3i.x, position3i.y, position3i.z );
+				byte blockType = GetBlockData( position3i );
 
 				if ( blockType != 0 )
 				{
@@ -309,7 +299,7 @@ namespace Sandblox
 				hitPosition3f.z = 0.0f;
 				IntVector3 blockHitPosition = new( (int)hitPosition3f.x, (int)hitPosition3f.y, (int)hitPosition3f.z );
 
-				byte blockType = GetBlockData( blockHitPosition.x, blockHitPosition.y, blockHitPosition.z );
+				byte blockType = GetBlockData( blockHitPosition );
 
 				if ( blockType == 0 )
 				{

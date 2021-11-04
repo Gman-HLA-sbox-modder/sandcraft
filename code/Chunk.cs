@@ -110,7 +110,7 @@ namespace Sandblox
 			7, 6, 2, 2, 3, 7,
 		};
 
-		static readonly IntVector3[] BlockDirections = new[]
+		public static readonly IntVector3[] BlockDirections = new[]
 		{
 			new IntVector3( 0, 0, 1 ),
 			new IntVector3( 0, 0, -1 ),
@@ -172,8 +172,8 @@ namespace Sandblox
 		BlockFace GetBlockFace( IntVector3 position, int side )
 		{
 			var p = offset + position;
-			var blockEmpty = map.IsBlockEmpty( p.x, p.y, p.z );
-			var blockIndex = blockEmpty ? 0 : map.GetBlockIndex( p.x, p.y, p.z );
+			var blockEmpty = map.IsBlockEmpty( p );
+			var blockIndex = blockEmpty ? 0 : map.GetBlockIndex( p );
 			var blockType = blockEmpty ? (byte)0 : map.GetBlockData( blockIndex );
 			var blockBrightness = blockEmpty ? (byte)0 : map.GetBlockBrightness( blockIndex );
 
@@ -185,10 +185,10 @@ namespace Sandblox
 				brightness = blockBrightness
 			};
 
-			if ( !face.culled && !map.IsAdjacentBlockEmpty( p.x, p.y, p.z, side ) )
+			if ( !face.culled && !map.IsAdjacentBlockEmpty( p, side ) )
 			{
-				var adjacentPosition = Map.GetAdjacentPos( p.x, p.y, p.z, side );
-				var adjacentBlockType = map.GetBlockData( adjacentPosition.x, adjacentPosition.y, adjacentPosition.z );
+				var adjacentPosition = Map.GetAdjacentPos( p, side );
+				var adjacentBlockType = map.GetBlockData( adjacentPosition );
 
 				if ( adjacentBlockType != 0 )
 				{

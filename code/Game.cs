@@ -75,16 +75,11 @@ namespace Sandblox
 			if ( f == Map.BlockFace.Invalid )
 				return false;
 
-			var x = hitpos.x;
-			var y = hitpos.y;
-			var z = hitpos.z;
+			var blockPos = hitpos;
 
 			if ( blocktype != 0 )
 			{
-				var b = Map.GetAdjacentPos( x, y, z, (int)f );
-				x = b.x;
-				y = b.y;
-				z = b.z;
+				blockPos = Map.GetAdjacentPos( blockPos, (int)f );
 			}
 
 			bool build = false;
@@ -93,13 +88,9 @@ namespace Sandblox
 			var numChunksX = map.SizeX / Chunk.ChunkSize;
 			var numChunksY = map.SizeY / Chunk.ChunkSize;
 
-			var x3 = x;
-			var y3 = y;
-			var z3 = z;
-
-			if ( map.SetBlock( x3, y3, z3, blocktype ) )
+			if ( map.SetBlock( blockPos, blocktype ) )
 			{
-				var chunkIndex = (x3 / Chunk.ChunkSize) + (y3 / Chunk.ChunkSize) * numChunksX + (z3 / Chunk.ChunkSize) * numChunksX * numChunksY;
+				var chunkIndex = (blockPos.x / Chunk.ChunkSize) + (blockPos.y / Chunk.ChunkSize) * numChunksX + (blockPos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
 
 				chunkids.Add( chunkIndex );
 
@@ -107,14 +98,14 @@ namespace Sandblox
 
 				for ( int i = 0; i < 6; i++ )
 				{
-					if ( map.IsAdjacentBlockEmpty( x3, y3, z3, i ) )
+					if ( map.IsAdjacentBlockEmpty( blockPos, i ) )
 					{
-						var posInChunk = new IntVector3( x3 % Chunk.ChunkSize, y3 % Chunk.ChunkSize, z3 % Chunk.ChunkSize );
+						var posInChunk = new IntVector3( blockPos.x % Chunk.ChunkSize, blockPos.y % Chunk.ChunkSize, blockPos.z % Chunk.ChunkSize );
 						chunks[chunkIndex].UpdateBlockSlice( posInChunk, i );
 						continue;
 					}
 
-					var adjacentPos = Map.GetAdjacentPos( x3, y3, z3, i );
+					var adjacentPos = Map.GetAdjacentPos( blockPos, i );
 					var adjadentChunkIndex = (adjacentPos.x / Chunk.ChunkSize) + (adjacentPos.y / Chunk.ChunkSize) * numChunksX + (adjacentPos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
 					var adjacentPosInChunk = new IntVector3( adjacentPos.x % Chunk.ChunkSize, adjacentPos.y % Chunk.ChunkSize, adjacentPos.z % Chunk.ChunkSize );
 

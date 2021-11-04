@@ -125,8 +125,6 @@ namespace Sandblox
 			2, 2, 1, 1, 0, 0
 		};
 
-		public static int GetOppositeDirection( int direction ) { return direction + ((direction % 2 != 0) ? -1 : 1); }
-
 		private static void AddQuad( List<BlockVertex> vertices, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
 		{
 			byte textureId = (byte)(blockType - 1);

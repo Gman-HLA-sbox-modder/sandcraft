@@ -97,18 +97,19 @@ namespace Sandblox
 				{
 					if ( map.IsAdjacentBlockEmpty( blockPos, i ) )
 					{
-						var posInChunk = new IntVector3( blockPos.x % Chunk.ChunkSize, blockPos.y % Chunk.ChunkSize, blockPos.z % Chunk.ChunkSize );
+						var posInChunk = Map.GetBlockPosInChunk( blockPos );
 						chunks[chunkIndex].UpdateBlockSlice( posInChunk, i );
+
 						continue;
 					}
 
 					var adjacentPos = Map.GetAdjacentPos( blockPos, i );
 					var adjadentChunkIndex = map.GetBlockChunkIndex( adjacentPos );
-					var adjacentPosInChunk = new IntVector3( adjacentPos.x % Chunk.ChunkSize, adjacentPos.y % Chunk.ChunkSize, adjacentPos.z % Chunk.ChunkSize );
+					var adjacentPosInChunk = Map.GetBlockPosInChunk( adjacentPos );
 
 					chunkids.Add( adjadentChunkIndex );
 
-					chunks[adjadentChunkIndex].UpdateBlockSlice( adjacentPosInChunk, Chunk.GetOppositeDirection( i ) );
+					chunks[adjadentChunkIndex].UpdateBlockSlice( adjacentPosInChunk, Map.GetOppositeDirection( i ) );
 				}
 			}
 

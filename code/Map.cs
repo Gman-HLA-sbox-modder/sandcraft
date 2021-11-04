@@ -43,6 +43,13 @@ namespace Sandblox
 			return (pos.x / Chunk.ChunkSize) + (pos.y / Chunk.ChunkSize) * numChunksX + (pos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
 		}
 
+		public static IntVector3 GetBlockPosInChunk( IntVector3 pos )
+		{
+			return new IntVector3( pos.x % Chunk.ChunkSize, pos.y % Chunk.ChunkSize, pos.z % Chunk.ChunkSize );
+		}
+
+		public static int GetOppositeDirection( int direction ) { return direction + ((direction % 2 != 0) ? -1 : 1); }
+
 		public void GeneratePerlin()
 		{
 			for ( int x = 0; x < sizeX; ++x )

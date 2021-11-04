@@ -44,7 +44,7 @@ namespace Sandblox
 					{
 						int blockIndex = GetBlockIndex( x, y, z );
 						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 2, 2 )) : 0);
-						healthdata[blockIndex] = 15;// (byte)Rand.Int( 1, 15 );
+						healthdata[blockIndex] = (byte)Rand.Int( 1, 15 );
 					}
 				}
 			}

@@ -23,7 +23,7 @@ namespace Sandblox
 			mesh = new Mesh( material );
 
 			var boundsMin = Vector3.Zero;
-			var boundsMax = boundsMin + (new Vector3( ChunkSize ) * 32);
+			var boundsMax = boundsMin + (ChunkSize * 32);
 			mesh.SetBounds( boundsMin, boundsMax );
 
 			for ( int i = 0; i < Slices.Length; ++i )
@@ -38,7 +38,7 @@ namespace Sandblox
 				.AddMesh( mesh )
 				.Create();
 
-			var transform = new Transform( new Vector3( offset.x, offset.y, offset.z ) * 32.0f );
+			var transform = new Transform( offset * 32.0f );
 			sceneObject = new SceneObject( model, transform );
 		}
 
@@ -102,22 +102,22 @@ namespace Sandblox
 
 		static readonly int[] BlockIndices = new[]
 		{
-			2, 1, 0, 0, 3, 2, // 0
-			5, 6, 7, 7, 4, 5, // 1
-			4, 7, 3, 3, 0, 4, // 5
-			6, 5, 1, 1, 2, 6, // 3
-			5, 4, 0, 0, 1, 5, // 2
-			7, 6, 2, 2, 3, 7, // 4
+			2, 1, 0, 0, 3, 2,
+			5, 6, 7, 7, 4, 5,
+			4, 7, 3, 3, 0, 4,
+			6, 5, 1, 1, 2, 6,
+			5, 4, 0, 0, 1, 5,
+			7, 6, 2, 2, 3, 7,
 		};
 
 		static readonly IntVector3[] BlockDirections = new[]
 		{
-			new IntVector3( 0, 0, 1 ), // 0
-			new IntVector3( 0, 0, -1 ), // 1
-			new IntVector3( 0, -1, 0 ), // 5
-			new IntVector3( 0, 1, 0 ), // 3
-			new IntVector3( -1, 0, 0 ), // 2
-			new IntVector3( 1, 0, 0 ), // 4
+			new IntVector3( 0, 0, 1 ),
+			new IntVector3( 0, 0, -1 ),
+			new IntVector3( 0, -1, 0 ),
+			new IntVector3( 0, 1, 0 ),
+			new IntVector3( -1, 0, 0 ),
+			new IntVector3( 1, 0, 0 ),
 		};
 
 		static readonly int[] BlockDirectionAxis = new[]
@@ -126,25 +126,6 @@ namespace Sandblox
 		};
 
 		public static int GetOppositeDirection( int direction ) { return direction + ((direction % 2 != 0) ? -1 : 1); }
-
-		private static void AddQuad( Span<BlockVertex> vertices, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
-		{
-			byte textureId = (byte)(blockType - 1);
-			byte normal = (byte)face;
-			uint faceData = (uint)((textureId & 31) << 18 | brightness | (normal & 7) << 27);
-
-			for ( int i = 0; i < 6; ++i )
-			{
-				int vi = BlockIndices[(face * 6) + i];
-				var vOffset = BlockVertices[vi];
-
-				// scale the vertex across the width and height of the face
-				vOffset[widthAxis] *= width;
-				vOffset[heightAxis] *= height;
-
-				vertices[i] = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), faceData );
-			}
-		}
 
 		private static void AddQuad( List<BlockVertex> vertices, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
 		{

@@ -93,43 +93,34 @@ namespace Sandblox
 			var numChunksX = map.SizeX / Chunk.ChunkSize;
 			var numChunksY = map.SizeY / Chunk.ChunkSize;
 
-			for ( int x2 = 0; x2 < 1; ++x2 )
+			var x3 = x;
+			var y3 = y;
+			var z3 = z;
+
+			if ( map.SetBlock( x3, y3, z3, blocktype ) )
 			{
-				for ( int y2 = 0; y2 < 1; ++y2 )
+				var chunkIndex = (x3 / Chunk.ChunkSize) + (y3 / Chunk.ChunkSize) * numChunksX + (z3 / Chunk.ChunkSize) * numChunksX * numChunksY;
+
+				chunkids.Add( chunkIndex );
+
+				build = true;
+
+				for ( int i = 0; i < 6; i++ )
 				{
-					for ( int z2 = 0; z2 < 1; ++z2 )
+					if ( map.IsAdjacentBlockEmpty( x3, y3, z3, i ) )
 					{
-						var x3 = x + x2;
-						var y3 = y + y2;
-						var z3 = z + z2;
-
-						if ( map.SetBlock( x3, y3, z3, blocktype ) )
-						{
-							var chunkIndex = (x3 / Chunk.ChunkSize) + (y3 / Chunk.ChunkSize) * numChunksX + (z3 / Chunk.ChunkSize) * numChunksX * numChunksY;
-
-							chunkids.Add( chunkIndex );
-
-							build = true;
-
-							for ( int i = 0; i < 6; i++ )
-							{
-								if ( map.IsAdjacentBlockEmpty( x3, y3, z3, i ) )
-								{
-									var posInChunk = new IntVector3( x3 % Chunk.ChunkSize, y3 % Chunk.ChunkSize, z3 % Chunk.ChunkSize );
-									chunks[chunkIndex].UpdateBlockSlice( posInChunk, i );
-									continue;
-								}
-
-								var adjacentPos = Map.GetAdjacentPos( x3, y3, z3, i );
-								var adjadentChunkIndex = (adjacentPos.x / Chunk.ChunkSize) + (adjacentPos.y / Chunk.ChunkSize) * numChunksX + (adjacentPos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
-								var adjacentPosInChunk = new IntVector3( adjacentPos.x % Chunk.ChunkSize, adjacentPos.y % Chunk.ChunkSize, adjacentPos.z % Chunk.ChunkSize );
-
-								chunkids.Add( adjadentChunkIndex );
-
-								chunks[adjadentChunkIndex].UpdateBlockSlice( adjacentPosInChunk, Chunk.GetOppositeDirection(i) );
-							}
-						}
+						var posInChunk = new IntVector3( x3 % Chunk.ChunkSize, y3 % Chunk.ChunkSize, z3 % Chunk.ChunkSize );
+						chunks[chunkIndex].UpdateBlockSlice( posInChunk, i );
+						continue;
 					}
+
+					var adjacentPos = Map.GetAdjacentPos( x3, y3, z3, i );
+					var adjadentChunkIndex = (adjacentPos.x / Chunk.ChunkSize) + (adjacentPos.y / Chunk.ChunkSize) * numChunksX + (adjacentPos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
+					var adjacentPosInChunk = new IntVector3( adjacentPos.x % Chunk.ChunkSize, adjacentPos.y % Chunk.ChunkSize, adjacentPos.z % Chunk.ChunkSize );
+
+					chunkids.Add( adjadentChunkIndex );
+
+					chunks[adjadentChunkIndex].UpdateBlockSlice( adjacentPosInChunk, Chunk.GetOppositeDirection( i ) );
 				}
 			}
 

@@ -11,7 +11,7 @@
 			m_pLayerMask = null
 			m_params = 
 			{
-				m_blendMode = "BLOOM_BLEND_ADD"
+				m_blendMode = "BLOOM_BLEND_SCREEN"
 				m_flBloomStrength = 0.226
 				m_flScreenBloomStrength = 1.0
 				m_flBlurBloomStrength = 1.0

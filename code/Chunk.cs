@@ -7,7 +7,6 @@ namespace Sandblox
 	public class Chunk
 	{
 		public static readonly int ChunkSize = 32;
-		private static readonly int MaxFaceCount = 7000;
 
 		private readonly Map map;
 		private readonly Model model;
@@ -22,7 +21,6 @@ namespace Sandblox
 
 			var material = Material.Load( "materials/voxel/voxel.vmat" );
 			mesh = new Mesh( material );
-			mesh.CreateVertexBuffer<BlockVertex>( MaxFaceCount * 6, BlockVertex.Layout );
 
 			var boundsMin = Vector3.Zero;
 			var boundsMax = boundsMin + (new Vector3( ChunkSize ) * 32);
@@ -59,6 +57,22 @@ namespace Sandblox
 				return;
 
 			int vertexCount = 0;
+			foreach ( var slice in Slices )
+			{
+				vertexCount += slice.vertices.Count;
+			}
+
+			if ( mesh.HasVertexBuffer )
+			{
+				mesh.SetVertexBufferSize( vertexCount );
+			}
+			else
+			{
+				// If there's no verts, just put in 1 for now (temp)
+				mesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, vertexCount ), BlockVertex.Layout );
+			}
+
+			vertexCount = 0;
 
 			foreach ( var slice in Slices )
 			{
@@ -67,7 +81,7 @@ namespace Sandblox
 				if ( slice.vertices.Count == 0 )
 					continue;
 
-				mesh.SetVertexBufferData<BlockVertex>( slice.vertices.ToArray(), vertexCount );
+				mesh.SetVertexBufferData( slice.vertices, vertexCount );
 				vertexCount += slice.vertices.Count;
 			}
 

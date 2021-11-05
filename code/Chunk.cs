@@ -14,6 +14,24 @@ namespace Sandblox
 		private readonly IntVector3 offset;
 		private SceneObject sceneObject;
 
+		private class Slice
+		{
+			public Slice()
+			{
+				body = new PhysicsBody
+				{
+					BodyType = PhysicsBodyType.Static
+				};
+			}
+
+			public bool dirty = false;
+			public List<BlockVertex> vertices = new();
+			public List<Vector3> collisionVertices = new();
+			public List<int> collisionIndices = new();
+			public PhysicsBody body;
+			public PhysicsShape shape;
+		}
+
 		public Chunk( Map map, IntVector3 offset )
 		{
 			this.map = map;
@@ -49,6 +67,15 @@ namespace Sandblox
 				sceneObject.Delete();
 				sceneObject = null;
 			}
+
+			foreach (var slice in Slices)
+			{
+				if ( slice == null )
+					continue;
+
+				slice.body?.Remove();
+				slice.body = null;
+			}
 		}
 
 		public void Build()
@@ -76,6 +103,20 @@ namespace Sandblox
 
 			foreach ( var slice in Slices )
 			{
+				if ( slice.dirty )
+				{
+					if ( slice.shape != null )
+					{
+						slice.body.RemoveShape( slice.shape, false );
+						slice.shape = null;
+					}
+
+					if ( slice.collisionVertices.Count > 0 && slice.collisionIndices.Count > 0 )
+					{
+						slice.shape = slice.body.AddMeshShape( slice.collisionVertices.ToArray(), slice.collisionIndices.ToArray() );
+					}
+				}
+
 				slice.dirty = false;
 
 				if ( slice.vertices.Count == 0 )
@@ -125,11 +166,12 @@ namespace Sandblox
 			2, 2, 1, 1, 0, 0
 		};
 
-		private static void AddQuad( List<BlockVertex> vertices, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
+		private void AddQuad( Slice slice, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
 		{
 			byte textureId = (byte)(blockType - 1);
 			byte normal = (byte)face;
 			uint faceData = (uint)((textureId & 31) << 18 | brightness | (normal & 7) << 27);
+			var collisionIndex = slice.collisionIndices.Count;
 
 			for ( int i = 0; i < 6; ++i )
 			{
@@ -140,7 +182,10 @@ namespace Sandblox
 				vOffset[widthAxis] *= width;
 				vOffset[heightAxis] *= height;
 
-				vertices.Add( new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), faceData ) );
+				slice.vertices.Add( new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), faceData ) );
+
+				slice.collisionVertices.Add( new Vector3( (x + vOffset.x) + offset.x, (y + vOffset.y) + offset.y, (z + vOffset.z) + offset.z ) * 32.0f );
+				slice.collisionIndices.Add( collisionIndex + i );
 			}
 		}
 
@@ -156,12 +201,6 @@ namespace Sandblox
 				return face.culled == culled && face.type == type && face.brightness == brightness;
 			}
 		};
-
-		private class Slice
-		{
-			public bool dirty = false;
-			public List<BlockVertex> vertices = new();
-		}
 
 		static readonly BlockFace[] BlockFaceMask = new BlockFace[ChunkSize * ChunkSize * ChunkSize];
 
@@ -226,6 +265,9 @@ namespace Sandblox
 
 			slice.dirty = true;
 			slice.vertices.Clear();
+			slice.collisionVertices.Clear();
+			slice.collisionIndices.Clear();
+
 			BlockFace faceA;
 			BlockFace faceB;
 
@@ -344,7 +386,7 @@ namespace Sandblox
 
 						var brightness = (BlockFaceMask[n].brightness & 15) << 23;
 
-						AddQuad( slice.vertices,
+						AddQuad( slice,
 							blockPosition.x, blockPosition.y, blockPosition.z,
 							faceWidth, faceHeight, uAxis, vAxis,
 							BlockFaceMask[n].side, BlockFaceMask[n].type, brightness );
@@ -395,6 +437,8 @@ namespace Sandblox
 					var slice = Slices[sliceIndex];
 					slice.dirty = true;
 					slice.vertices.Clear();
+					slice.collisionVertices.Clear();
+					slice.collisionIndices.Clear();
 
 					for ( blockPosition[vAxis] = 0; blockPosition[vAxis] < ChunkSize; blockPosition[vAxis]++ )
 					{
@@ -496,7 +540,7 @@ namespace Sandblox
 
 								var brightness = (BlockFaceMask[n].brightness & 15) << 23;
 
-								AddQuad( slice.vertices,
+								AddQuad( slice,
 									blockPosition.x, blockPosition.y, blockPosition.z,
 									faceWidth, faceHeight, uAxis, vAxis,
 									BlockFaceMask[n].side, BlockFaceMask[n].type, brightness );

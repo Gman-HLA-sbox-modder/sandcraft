@@ -69,7 +69,7 @@ namespace Sandblox
 			}
 		}
 
-		public readonly int LengthSquared => x * y * z;
+		public readonly int LengthSquared => x * x + y * y + z * z;
 
 		public override string ToString()
 		{

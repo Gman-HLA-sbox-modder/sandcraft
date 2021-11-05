@@ -29,6 +29,19 @@ namespace Sandblox
 			{
 				(Sandbox.Game.Current as Game).SetBlock( EyePos, EyeRot.Forward, 0 );
 			}
+
+			if ( input.Down( InputButton.Jump ) )
+			{
+				var r = Rotation.From( input.ViewAngles );
+				var ent = new Prop
+				{
+					Position = input.Position + r.Forward * 50,
+					Rotation = r
+				};
+
+				ent.SetModel( "models/citizen_props/crate01.vmdl" );
+				ent.Velocity = r.Forward * 4000;
+			}
 		}
 	}
 }

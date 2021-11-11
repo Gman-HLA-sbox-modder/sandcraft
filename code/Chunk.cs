@@ -68,7 +68,7 @@ namespace Sandblox
 				sceneObject = null;
 			}
 
-			foreach (var slice in Slices)
+			foreach ( var slice in Slices )
 			{
 				if ( slice == null )
 					continue;
@@ -193,12 +193,11 @@ namespace Sandblox
 		{
 			public bool culled;
 			public byte type;
-			public byte brightness;
 			public byte side;
 
 			public bool Equals( BlockFace face )
 			{
-				return face.culled == culled && face.type == type && face.brightness == brightness;
+				return face.culled == culled && face.type == type;
 			}
 		};
 
@@ -212,14 +211,12 @@ namespace Sandblox
 			var blockEmpty = map.IsBlockEmpty( p );
 			var blockIndex = blockEmpty ? 0 : map.GetBlockIndex( p );
 			var blockType = blockEmpty ? (byte)0 : map.GetBlockData( blockIndex );
-			var blockBrightness = blockEmpty ? (byte)0 : map.GetBlockBrightness( blockIndex );
 
 			var face = new BlockFace
 			{
 				side = (byte)side,
 				culled = blockType == 0,
 				type = blockType,
-				brightness = blockBrightness
 			};
 
 			if ( !face.culled && !map.IsAdjacentBlockEmpty( p, side ) )
@@ -295,7 +292,6 @@ namespace Sandblox
 						culled = true,
 						side = (byte)faceSide,
 						type = 0,
-						brightness = 0
 					};
 
 					// face of this block
@@ -384,7 +380,7 @@ namespace Sandblox
 						blockPosition[uAxis] = i;
 						blockPosition[vAxis] = j;
 
-						var brightness = (BlockFaceMask[n].brightness & 15) << 23;
+						var brightness = (15 & 15) << 23;
 
 						AddQuad( slice,
 							blockPosition.x, blockPosition.y, blockPosition.z,
@@ -449,7 +445,6 @@ namespace Sandblox
 								culled = true,
 								side = (byte)faceSide,
 								type = 0,
-								brightness = 0
 							};
 
 							// face of this block
@@ -538,7 +533,7 @@ namespace Sandblox
 								blockPosition[uAxis] = i;
 								blockPosition[vAxis] = j;
 
-								var brightness = (BlockFaceMask[n].brightness & 15) << 23;
+								var brightness = (15 & 15) << 23;
 
 								AddQuad( slice,
 									blockPosition.x, blockPosition.y, blockPosition.z,

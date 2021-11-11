@@ -1,41 +1,148 @@
 ﻿using Sandbox;
 using System;
+using System.Collections.Generic;
 
 namespace Sandblox
 {
+	public class MapDesc : BaseNetworkable, INetworkSerializer
+	{
+		public ushort sizeX;
+		public ushort sizeY;
+		public ushort sizeZ;
+		public byte[] blockTypes;
+
+		public void Read( ref NetRead read )
+		{
+			sizeX = read.Read<ushort>();
+			sizeY = read.Read<ushort>();
+			sizeZ = read.Read<ushort>();
+			blockTypes = read.ReadUnmanagedArray( blockTypes );
+		}
+
+		public void Write( NetWrite write )
+		{
+			write.Write( sizeX );
+			write.Write( sizeY );
+			write.Write( sizeZ );
+			write.WriteUnmanagedArray( blockTypes );
+		}
+	}
+
 	public class Map
 	{
-		private readonly byte[] blockdata = null;
-		private readonly byte[] healthdata = null;
-
-		private readonly int sizeX;
-		private readonly int sizeY;
-		private readonly int sizeZ;
+		private int SizeX => Desc.sizeX;
+		private int SizeY => Desc.sizeY;
+		private int SizeZ => Desc.sizeZ;
 
 		private readonly int numChunksX;
 		private readonly int numChunksY;
 		private readonly int numChunksZ;
 
-		public int SizeX => sizeX;
-		public int SizeY => sizeY;
-		public int SizeZ => sizeZ;
-
 		public int NumChunksX => numChunksX;
 		public int NumChunksY => numChunksY;
 		public int NumChunksZ => numChunksZ;
 
+		private readonly MapDesc Desc;
+		private readonly Chunk[] chunks;
+
 		public Map( int sizeX, int sizeY, int sizeZ )
 		{
-			this.sizeX = sizeX;
-			this.sizeY = sizeY;
-			this.sizeZ = sizeZ;
+			Desc = new()
+			{
+				sizeX = (ushort)sizeX,
+				sizeY = (ushort)sizeY,
+				sizeZ = (ushort)sizeZ,
+			};
+
+			Desc.blockTypes = new byte[SizeX * SizeY * SizeZ];
 
 			numChunksX = sizeX / Chunk.ChunkSize;
 			numChunksY = sizeY / Chunk.ChunkSize;
 			numChunksZ = sizeZ / Chunk.ChunkSize;
 
-			blockdata = new byte[this.sizeX * this.sizeY * this.sizeZ];
-			healthdata = new byte[this.sizeX * this.sizeY * this.sizeZ];
+			chunks = new Chunk[numChunksX * numChunksY * numChunksZ];
+		}
+
+		public void Init()
+		{
+			for ( int x = 0; x < numChunksX; ++x )
+			{
+				for ( int y = 0; y < numChunksY; ++y )
+				{
+					for ( int z = 0; z < numChunksZ; ++z )
+					{
+						var chunkIndex = x + y * numChunksX + z * numChunksX * numChunksY;
+						var chunk = new Chunk( this, new IntVector3( x * Chunk.ChunkSize, y * Chunk.ChunkSize, z * Chunk.ChunkSize ) );
+						chunks[chunkIndex] = chunk;
+					}
+				}
+			}
+		}
+
+		public void Destroy()
+		{
+			if ( chunks != null )
+			{
+				foreach ( var chunk in chunks )
+				{
+					if ( chunk == null )
+						continue;
+
+					chunk.Delete();
+				}
+			}
+		}
+
+		public bool SetBlock( Vector3 pos, Vector3 dir, byte blocktype )
+		{
+			var face = GetBlockInDirection( pos * (1.0f / 32.0f), dir.Normal, 10000, out var hitpos, out _ );
+			if ( face == BlockFace.Invalid )
+				return false;
+
+			var blockPos = hitpos;
+
+			if ( blocktype != 0 )
+			{
+				blockPos = GetAdjacentPos( blockPos, (int)face );
+			}
+
+			bool build = false;
+			var chunkids = new HashSet<int>();
+
+			if ( SetBlock( blockPos, blocktype ) )
+			{
+				var chunkIndex = GetBlockChunkIndex( blockPos );
+
+				chunkids.Add( chunkIndex );
+
+				build = true;
+
+				for ( int i = 0; i < 6; i++ )
+				{
+					if ( IsAdjacentBlockEmpty( blockPos, i ) )
+					{
+						var posInChunk = GetBlockPosInChunk( blockPos );
+						chunks[chunkIndex].UpdateBlockSlice( posInChunk, i );
+
+						continue;
+					}
+
+					var adjacentPos = GetAdjacentPos( blockPos, i );
+					var adjadentChunkIndex = GetBlockChunkIndex( adjacentPos );
+					var adjacentPosInChunk = GetBlockPosInChunk( adjacentPos );
+
+					chunkids.Add( adjadentChunkIndex );
+
+					chunks[adjadentChunkIndex].UpdateBlockSlice( adjacentPosInChunk, GetOppositeDirection( i ) );
+				}
+			}
+
+			foreach ( var chunkid in chunkids )
+			{
+				chunks[chunkid].Build();
+			}
+
+			return build;
 		}
 
 		public int GetBlockChunkIndex( IntVector3 pos )
@@ -52,19 +159,18 @@ namespace Sandblox
 
 		public void GeneratePerlin()
 		{
-			for ( int x = 0; x < sizeX; ++x )
+			for ( int x = 0; x < SizeX; ++x )
 			{
-				for ( int y = 0; y < sizeY; ++y )
+				for ( int y = 0; y < SizeY; ++y )
 				{
-					int height = (int)((sizeZ / 2) * (Noise.Perlin( (x * 32) * 0.001f, (y * 32) * 0.001f, 0 ) + 0.5f) * 0.5f);
+					int height = (int)((SizeZ / 2) * (Noise.Perlin( (x * 32) * 0.001f, (y * 32) * 0.001f, 0 ) + 0.5f) * 0.5f);
 					if ( height <= 0 ) height = 1;
-					if ( height > sizeZ ) height = sizeZ;
+					if ( height > SizeZ ) height = SizeZ;
 
-					for ( int z = 0; z < sizeZ; ++z )
+					for ( int z = 0; z < SizeZ; ++z )
 					{
 						int blockIndex = GetBlockIndex( new IntVector3( x, y, z ) );
-						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 2, 2 )) : 0);
-						healthdata[blockIndex] = (byte)Rand.Int( 1, 15 );
+						Desc.blockTypes[blockIndex] = (byte)(z < height ? (Rand.Int( 2, 2 )) : 0);
 					}
 				}
 			}
@@ -72,42 +178,40 @@ namespace Sandblox
 
 		public void GenerateGround()
 		{
-			for ( int x = 0; x < sizeX; ++x )
+			for ( int x = 0; x < SizeX; ++x )
 			{
-				for ( int y = 0; y < sizeY; ++y )
+				for ( int y = 0; y < SizeY; ++y )
 				{
 					int height = 10;
 					if ( height <= 0 ) height = 1;
-					if ( height > sizeZ ) height = sizeZ;
+					if ( height > SizeZ ) height = SizeZ;
 
-					for ( int z = 0; z < sizeZ; ++z )
+					for ( int z = 0; z < SizeZ; ++z )
 					{
 						int blockIndex = GetBlockIndex( new IntVector3( x, y, z ) );
-						blockdata[blockIndex] = (byte)(z < height ? (Rand.Int( 1, 5 )) : 0);
-						healthdata[blockIndex] = (byte)Rand.Int( 1, 255 );
+						Desc.blockTypes[blockIndex] = (byte)(z < height ? (Rand.Int( 1, 5 )) : 0);
 					}
 				}
 			}
 		}
 
-		public bool SetBlock( IntVector3 pos, byte blocktype, byte health = 15 )
+		public bool SetBlock( IntVector3 pos, byte blocktype )
 		{
-			if ( pos.x < 0 || pos.x >= sizeX ) return false;
-			if ( pos.y < 0 || pos.y >= sizeY ) return false;
-			if ( pos.z < 0 || pos.z >= sizeZ ) return false;
+			if ( pos.x < 0 || pos.x >= SizeX ) return false;
+			if ( pos.y < 0 || pos.y >= SizeY ) return false;
+			if ( pos.z < 0 || pos.z >= SizeZ ) return false;
 
 			int blockindex = GetBlockIndex( pos );
 			int curBlocktype = GetBlockData( blockindex );
 
-			if ( blocktype == curBlocktype && health == healthdata[blockindex] )
+			if ( blocktype == curBlocktype )
 			{
 				return false;
 			}
 
 			if ( (blocktype != 0 && curBlocktype == 0) || (blocktype == 0 && curBlocktype != 0) )
 			{
-				blockdata[blockindex] = blocktype;
-				healthdata[blockindex] = health;
+				Desc.blockTypes[blockindex] = blocktype;
 
 				return true;
 			}
@@ -124,66 +228,61 @@ namespace Sandblox
 		{
 			var adjacentPos = GetAdjacentPos( pos, side );
 
-			if ( adjacentPos.x < 0 || adjacentPos.x >= sizeX ||
-				 adjacentPos.y < 0 || adjacentPos.y >= sizeY )
+			if ( adjacentPos.x < 0 || adjacentPos.x >= SizeX ||
+				 adjacentPos.y < 0 || adjacentPos.y >= SizeY )
 			{
 				return true;
 			}
 
-			if ( adjacentPos.z < 0 || adjacentPos.z >= sizeZ )
+			if ( adjacentPos.z < 0 || adjacentPos.z >= SizeZ )
 			{
 				return true;
 			}
 
-			if ( adjacentPos.z >= sizeZ )
+			if ( adjacentPos.z >= SizeZ )
 			{
 				return true;
 			}
 
 			var blockIndex = GetBlockIndex( adjacentPos );
-			return blockdata[blockIndex] == 0;
+			return Desc.blockTypes[blockIndex] == 0;
 		}
 
 		public bool IsBlockEmpty( IntVector3 pos )
 		{
-			if ( pos.x < 0 || pos.x >= sizeX ||
-				 pos.y < 0 || pos.y >= sizeY )
+			if ( pos.x < 0 || pos.x >= SizeX ||
+				 pos.y < 0 || pos.y >= SizeY )
 			{
 				return true;
 			}
 
-			if ( pos.z < 0 || pos.z >= sizeZ )
+			if ( pos.z < 0 || pos.z >= SizeZ )
 			{
 				return true;
 			}
 
-			if ( pos.z >= sizeZ )
+			if ( pos.z >= SizeZ )
 			{
 				return true;
 			}
 
 			var blockIndex = GetBlockIndex( pos );
-			return blockdata[blockIndex] == 0;
+			return Desc.blockTypes[blockIndex] == 0;
 		}
 
 		public int GetBlockIndex( IntVector3 pos )
 		{
-			return pos.x + pos.y * sizeX + pos.z * sizeX * sizeY;
+			return pos.x + pos.y * SizeX + pos.z * SizeX * SizeY;
 		}
 
 		public byte GetBlockData( IntVector3 pos )
 		{
-			return blockdata[GetBlockIndex( pos )];
+			return Desc.blockTypes[GetBlockIndex( pos )];
 		}
 
 		public byte GetBlockData( int index )
 		{
-			return blockdata[index];
-		}
-
-		public byte GetBlockBrightness( int index )
-		{
-			return healthdata[index];
+			return Desc.blockTypes[index];
 		}
 
 		public enum BlockFace : int
@@ -302,7 +401,7 @@ namespace Sandblox
 				}
 			}
 
-			Plane plane = new( new Vector3( 0.0f, 0.0f, 0.0f ), new Vector3( 0.0f, 1.0f, 0.0f ) );
+			Plane plane = new( new Vector3( 0.0f, 0.0f, 0.0f ), new Vector3( 0.0f, 0.0f, 1.0f ) );
 			float distanceHit = 0;
 			var traceHitPos = plane.Trace( ray, true );
 			if ( traceHitPos.HasValue ) distanceHit = Vector3.DistanceBetween( position, traceHitPos.Value );
@@ -329,7 +428,7 @@ namespace Sandblox
 				{
 					distance = distanceHit;
 					hitPosition = blockHitPosition;
-					hitPosition.y = -1;
+					hitPosition.z = -1;
 
 					return BlockFace.Top;
 				}

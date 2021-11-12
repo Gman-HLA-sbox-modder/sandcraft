@@ -2,11 +2,6 @@
 
 namespace Sandblox
 {
-	public partial class TestEnt : ModelEntity
-	{
-		[Net] public int test { get; set; }
-	}
-
 	public partial class Game : Sandbox.Game
 	{
 		[Net] private Map Map { get; set; }
@@ -24,7 +19,7 @@ namespace Sandblox
 			base.Spawn();
 
 			Map = new Map();
-			Map.SetSize( 128, 128, 64 );
+			Map.SetSize( 256, 256, 64 );
 			Map.GeneratePerlin();
 			Map.Init();
 		}

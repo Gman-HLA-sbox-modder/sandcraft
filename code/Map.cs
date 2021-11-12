@@ -27,8 +27,6 @@ namespace Sandblox
 			SizeY = sizeY;
 			SizeZ = sizeZ;
 
-			Log.Info( SizeX );
-
 			numChunksX = SizeX / Chunk.ChunkSize;
 			numChunksY = SizeY / Chunk.ChunkSize;
 			numChunksZ = SizeZ / Chunk.ChunkSize;
@@ -73,20 +71,6 @@ namespace Sandblox
 			foreach ( var chunkData in ChunkData )
 			{
 				Chunks.Add( new Chunk( this, chunkData ) );
-			}
-		}
-
-		public void Destroy()
-		{
-			if ( Chunks != null )
-			{
-				foreach ( var chunk in Chunks )
-				{
-					if ( chunk == null )
-						continue;
-
-					chunk.Destroy();
-				}
 			}
 		}
 
@@ -148,7 +132,6 @@ namespace Sandblox
 
 		public void GeneratePerlin()
 		{
-			Log.Info( "GeneratePerlin" );
 			for ( int x = 0; x < SizeX; ++x )
 			{
 				for ( int y = 0; y < SizeY; ++y )

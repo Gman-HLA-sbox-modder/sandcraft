@@ -35,13 +35,6 @@ namespace Sandblox
 			Map.Init();
 		}
 
-		protected override void OnDestroy()
-		{
-			base.OnDestroy();
-
-			Map?.Destroy();
-		}
-
 		public override void ClientJoined( Client client )
 		{
 			base.ClientJoined( client );

@@ -16,7 +16,7 @@ namespace Sandblox
 		private Mesh mesh;
 		private SceneObject sceneObject;
 
-		public Chunk() : base()
+		public Chunk()
 		{		
 		}
 
@@ -25,6 +25,24 @@ namespace Sandblox
 			Map = map;
 			Data = data;
 			Transmit = TransmitType.FullUpdateOnly;
+		}
+
+		protected override void OnDestroy()
+		{
+			if ( sceneObject != null )
+			{
+				sceneObject.Delete();
+				sceneObject = null;
+			}
+
+			foreach ( var slice in Slices )
+			{
+				if ( slice == null )
+					continue;
+
+				slice.body?.Remove();
+				slice.body = null;
+			}
 		}
 
 		private bool Initialized;
@@ -98,24 +116,6 @@ namespace Sandblox
 		public void SetBlockTypeAtIndex( int index, byte blockType )
 		{
 			Data.BlockTypes[index] = blockType;
-		}
-
-		public void Destroy()
-		{
-			if ( sceneObject != null )
-			{
-				sceneObject.Delete();
-				sceneObject = null;
-			}
-
-			foreach ( var slice in Slices )
-			{
-				if ( slice == null )
-					continue;
-
-				slice.body?.Remove();
-				slice.body = null;
-			}
 		}
 
 		public void Build()

@@ -4,7 +4,7 @@ namespace Sandblox
 {
 	public partial class Game : Sandbox.Game
 	{
-		private readonly Map map;
+		private Map Map { get; set; }
 
 		public Game()
 		{
@@ -12,21 +12,27 @@ namespace Sandblox
 			{
 				_ = new HudEntity();
 			}
+		}
 
-			map = new Map( 256, 256, 64 );
-			map.GeneratePerlin();
+		public override void Spawn()
+		{
+			base.Spawn();
+		}
 
-			if ( IsClient )
-			{
-				map.Init();
-			}
+		public override void ClientSpawn()
+		{
+			base.ClientSpawn();
+
+			Map = new Map( 256, 256, 64 );
+			Map.GeneratePerlin();
+			Map.Init();
 		}
 
 		protected override void OnDestroy()
 		{
 			base.OnDestroy();
 
-			map.Destroy();
+			Map.Destroy();
 		}
 
 		public override void ClientJoined( Client client )
@@ -41,7 +47,7 @@ namespace Sandblox
 
 		public bool SetBlock( Vector3 pos, Vector3 dir, byte blocktype )
 		{
-			return map.SetBlock( pos, dir, blocktype );
+			return Map.SetBlock( pos, dir, blocktype );
 		}
 	}
 }

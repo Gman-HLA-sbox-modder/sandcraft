@@ -4,67 +4,34 @@ using System.Collections.Generic;
 
 namespace Sandblox
 {
-	public class MapDesc : BaseNetworkable, INetworkSerializer
+	public partial class Map
 	{
-		public ushort sizeX;
-		public ushort sizeY;
-		public ushort sizeZ;
-		public byte[] blockTypes;
+		public int SizeX { get; private set; }
+		public int SizeY { get; private set; }
+		public int SizeZ { get; private set; }
 
-		public void Read( ref NetRead read )
-		{
-			sizeX = read.Read<ushort>();
-			sizeY = read.Read<ushort>();
-			sizeZ = read.Read<ushort>();
-			blockTypes = read.ReadUnmanagedArray( blockTypes );
-		}
-
-		public void Write( NetWrite write )
-		{
-			write.Write( sizeX );
-			write.Write( sizeY );
-			write.Write( sizeZ );
-			write.WriteUnmanagedArray( blockTypes );
-		}
-	}
-
-	public class Map
-	{
-		private int SizeX => Desc.sizeX;
-		private int SizeY => Desc.sizeY;
-		private int SizeZ => Desc.sizeZ;
-
-		private readonly int numChunksX;
-		private readonly int numChunksY;
-		private readonly int numChunksZ;
+		private int numChunksX;
+		private int numChunksY;
+		private int numChunksZ;
 
 		public int NumChunksX => numChunksX;
 		public int NumChunksY => numChunksY;
 		public int NumChunksZ => numChunksZ;
 
-		private readonly MapDesc Desc;
-		private readonly Chunk[] chunks;
+		private Chunk[] Chunks { get; set; }
 
 		public Map( int sizeX, int sizeY, int sizeZ )
 		{
-			Desc = new()
-			{
-				sizeX = (ushort)sizeX,
-				sizeY = (ushort)sizeY,
-				sizeZ = (ushort)sizeZ,
-			};
+			SizeX = (ushort)sizeX;
+			SizeY = (ushort)sizeY;
+			SizeZ = (ushort)sizeZ;
 
-			Desc.blockTypes = new byte[SizeX * SizeY * SizeZ];
+			numChunksX = SizeX / Chunk.ChunkSize;
+			numChunksY = SizeY / Chunk.ChunkSize;
+			numChunksZ = SizeZ / Chunk.ChunkSize;
 
-			numChunksX = sizeX / Chunk.ChunkSize;
-			numChunksY = sizeY / Chunk.ChunkSize;
-			numChunksZ = sizeZ / Chunk.ChunkSize;
+			Chunks = new Chunk[numChunksX * numChunksY * numChunksZ];
 
-			chunks = new Chunk[numChunksX * numChunksY * numChunksZ];
-		}
-
-		public void Init()
-		{
 			for ( int x = 0; x < numChunksX; ++x )
 			{
 				for ( int y = 0; y < numChunksY; ++y )
@@ -73,17 +40,31 @@ namespace Sandblox
 					{
 						var chunkIndex = x + y * numChunksX + z * numChunksX * numChunksY;
 						var chunk = new Chunk( this, new IntVector3( x * Chunk.ChunkSize, y * Chunk.ChunkSize, z * Chunk.ChunkSize ) );
-						chunks[chunkIndex] = chunk;
+						Chunks[chunkIndex] = chunk;
 					}
+				}
+			}
+		}
+
+		public void Init()
+		{
+			if ( Chunks != null )
+			{
+				foreach ( var chunk in Chunks )
+				{
+					if ( chunk == null )
+						continue;
+
+					chunk.Init();
 				}
 			}
 		}
 
 		public void Destroy()
 		{
-			if ( chunks != null )
+			if ( Chunks != null )
 			{
-				foreach ( var chunk in chunks )
+				foreach ( var chunk in Chunks )
 				{
 					if ( chunk == null )
 						continue;
@@ -103,7 +84,7 @@ namespace Sandblox
 
 			if ( blocktype != 0 )
 			{
-				blockPos = GetAdjacentPos( blockPos, (int)face );
+				blockPos = GetAdjacentBlockPosition( blockPos, (int)face );
 			}
 
 			bool build = false;
@@ -111,7 +92,7 @@ namespace Sandblox
 
 			if ( SetBlock( blockPos, blocktype ) )
 			{
-				var chunkIndex = GetBlockChunkIndex( blockPos );
+				var chunkIndex = GetBlockChunkIndexAtPosition( blockPos );
 
 				chunkids.Add( chunkIndex );
 
@@ -121,36 +102,36 @@ namespace Sandblox
 				{
 					if ( IsAdjacentBlockEmpty( blockPos, i ) )
 					{
-						var posInChunk = GetBlockPosInChunk( blockPos );
-						chunks[chunkIndex].UpdateBlockSlice( posInChunk, i );
+						var posInChunk = GetBlockPositionInChunk( blockPos );
+						Chunks[chunkIndex].UpdateBlockSlice( posInChunk, i );
 
 						continue;
 					}
 
-					var adjacentPos = GetAdjacentPos( blockPos, i );
-					var adjadentChunkIndex = GetBlockChunkIndex( adjacentPos );
-					var adjacentPosInChunk = GetBlockPosInChunk( adjacentPos );
+					var adjacentPos = GetAdjacentBlockPosition( blockPos, i );
+					var adjadentChunkIndex = GetBlockChunkIndexAtPosition( adjacentPos );
+					var adjacentPosInChunk = GetBlockPositionInChunk( adjacentPos );
 
 					chunkids.Add( adjadentChunkIndex );
 
-					chunks[adjadentChunkIndex].UpdateBlockSlice( adjacentPosInChunk, GetOppositeDirection( i ) );
+					Chunks[adjadentChunkIndex].UpdateBlockSlice( adjacentPosInChunk, GetOppositeDirection( i ) );
 				}
 			}
 
 			foreach ( var chunkid in chunkids )
 			{
-				chunks[chunkid].Build();
+				Chunks[chunkid].Build();
 			}
 
 			return build;
 		}
 
-		public int GetBlockChunkIndex( IntVector3 pos )
+		public int GetBlockChunkIndexAtPosition( IntVector3 pos )
 		{
 			return (pos.x / Chunk.ChunkSize) + (pos.y / Chunk.ChunkSize) * numChunksX + (pos.z / Chunk.ChunkSize) * numChunksX * numChunksY;
 		}
 
-		public static IntVector3 GetBlockPosInChunk( IntVector3 pos )
+		public static IntVector3 GetBlockPositionInChunk( IntVector3 pos )
 		{
 			return new IntVector3( pos.x % Chunk.ChunkSize, pos.y % Chunk.ChunkSize, pos.z % Chunk.ChunkSize );
 		}
@@ -169,8 +150,7 @@ namespace Sandblox
 
 					for ( int z = 0; z < SizeZ; ++z )
 					{
-						int blockIndex = GetBlockIndex( new IntVector3( x, y, z ) );
-						Desc.blockTypes[blockIndex] = (byte)(z < height ? (Rand.Int( 2, 2 )) : 0);
+						SetBlockTypeAtPosition( new IntVector3( x, y, z ), (byte)(z < height ? Rand.Int( 2, 2 ) : 0) );
 					}
 				}
 			}
@@ -188,30 +168,50 @@ namespace Sandblox
 
 					for ( int z = 0; z < SizeZ; ++z )
 					{
-						int blockIndex = GetBlockIndex( new IntVector3( x, y, z ) );
-						Desc.blockTypes[blockIndex] = (byte)(z < height ? (Rand.Int( 1, 5 )) : 0);
+						SetBlockTypeAtPosition( new IntVector3( x, y, z ), (byte)(z < height ? Rand.Int( 1, 5 ) : 0) );
 					}
 				}
 			}
 		}
 
-		public bool SetBlock( IntVector3 pos, byte blocktype )
+		private void SetBlockTypeAtPosition( IntVector3 pos, byte blockType )
+		{
+			var chunkIndex = GetBlockChunkIndexAtPosition( pos );
+			var blockPositionInChunk = GetBlockPositionInChunk( pos );
+			var chunk = Chunks[chunkIndex];
+
+			chunk.SetBlockTypeAtPosition( blockPositionInChunk, blockType );
+		}
+
+		public byte GetBlockTypeAtPosition( IntVector3 pos )
+		{
+			var chunkIndex = GetBlockChunkIndexAtPosition( pos );
+			var blockPositionInChunk = GetBlockPositionInChunk( pos );
+			var chunk = Chunks[chunkIndex];
+
+			return chunk.GetBlockTypeAtPosition( blockPositionInChunk );
+		}
+
+		public bool SetBlock( IntVector3 pos, byte blockType )
 		{
 			if ( pos.x < 0 || pos.x >= SizeX ) return false;
 			if ( pos.y < 0 || pos.y >= SizeY ) return false;
 			if ( pos.z < 0 || pos.z >= SizeZ ) return false;
 
-			int blockindex = GetBlockIndex( pos );
-			int curBlocktype = GetBlockData( blockindex );
+			var chunkIndex = GetBlockChunkIndexAtPosition( pos );
+			var blockPositionInChunk = GetBlockPositionInChunk( pos );
+			int blockindex = Chunk.GetBlockIndexAtPosition( blockPositionInChunk );
+			var chunk = Chunks[chunkIndex];
+			int currentBlockType = chunk.GetBlockTypeAtIndex( blockindex );
 
-			if ( blocktype == curBlocktype )
+			if ( blockType == currentBlockType )
 			{
 				return false;
 			}
 
-			if ( (blocktype != 0 && curBlocktype == 0) || (blocktype == 0 && curBlocktype != 0) )
+			if ( (blockType != 0 && currentBlockType == 0) || (blockType == 0 && currentBlockType != 0) )
 			{
-				Desc.blockTypes[blockindex] = blocktype;
+				chunk.SetBlockTypeAtIndex( blockindex, blockType );
 
 				return true;
 			}
@@ -219,33 +219,14 @@ namespace Sandblox
 			return false;
 		}
 
-		public static IntVector3 GetAdjacentPos( IntVector3 pos, int side )
+		public static IntVector3 GetAdjacentBlockPosition( IntVector3 pos, int side )
 		{
 			return pos + Chunk.BlockDirections[side];
 		}
 
 		public bool IsAdjacentBlockEmpty( IntVector3 pos, int side )
 		{
-			var adjacentPos = GetAdjacentPos( pos, side );
-
-			if ( adjacentPos.x < 0 || adjacentPos.x >= SizeX ||
-				 adjacentPos.y < 0 || adjacentPos.y >= SizeY )
-			{
-				return true;
-			}
-
-			if ( adjacentPos.z < 0 || adjacentPos.z >= SizeZ )
-			{
-				return true;
-			}
-
-			if ( adjacentPos.z >= SizeZ )
-			{
-				return true;
-			}
-
-			var blockIndex = GetBlockIndex( adjacentPos );
-			return Desc.blockTypes[blockIndex] == 0;
+			return IsBlockEmpty( GetAdjacentBlockPosition( pos, side ) );
 		}
 
 		public bool IsBlockEmpty( IntVector3 pos )
@@ -266,23 +247,11 @@ namespace Sandblox
 				return true;
 			}
 
-			var blockIndex = GetBlockIndex( pos );
-			return Desc.blockTypes[blockIndex] == 0;
-		}
+			var chunkIndex = GetBlockChunkIndexAtPosition( pos );
+			var blockPositionInChunk = GetBlockPositionInChunk( pos );
+			var chunk = Chunks[chunkIndex];
 
-		public int GetBlockIndex( IntVector3 pos )
-		{
-			return pos.x + pos.y * SizeX + pos.z * SizeX * SizeY;
-		}
-
-		public byte GetBlockData( IntVector3 pos )
-		{
-			return Desc.blockTypes[GetBlockIndex( pos )];
-		}
-
-		public byte GetBlockData( int index )
-		{
-			return Desc.blockTypes[index];
+			return chunk.GetBlockTypeAtPosition( blockPositionInChunk ) == 0;
 		}
 
 		public enum BlockFace : int
@@ -391,7 +360,7 @@ namespace Sandblox
 				// if there is a block at the current position, we have an intersection
 				position3i = new( (int)position3f.x, (int)position3f.y, (int)position3f.z );
 
-				byte blockType = GetBlockData( position3i );
+				byte blockType = GetBlockTypeAtPosition( position3i );
 
 				if ( blockType != 0 )
 				{
@@ -422,7 +391,7 @@ namespace Sandblox
 				hitPosition3f.z = 0.0f;
 				IntVector3 blockHitPosition = new( (int)hitPosition3f.x, (int)hitPosition3f.y, (int)hitPosition3f.z );
 
-				byte blockType = GetBlockData( blockHitPosition );
+				byte blockType = GetBlockTypeAtPosition( blockHitPosition );
 
 				if ( blockType == 0 )
 				{

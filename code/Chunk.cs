@@ -8,10 +8,13 @@ namespace Sandblox
 	{
 		public static readonly int ChunkSize = 32;
 
+		public byte[] blockTypes;
+
 		private readonly Map map;
-		private readonly Model model;
-		private readonly Mesh mesh;
 		private readonly IntVector3 offset;
+
+		private Model model;
+		private Mesh mesh;
 		private SceneObject sceneObject;
 
 		private class Slice
@@ -37,6 +40,18 @@ namespace Sandblox
 			this.map = map;
 			this.offset = offset;
 
+			blockTypes = new byte[ChunkSize * ChunkSize * ChunkSize];
+		}
+
+		public void Init()
+		{
+			for ( int i = 0; i < Slices.Length; ++i )
+			{
+				Slices[i] = new Slice();
+			}
+
+			UpdateBlockSlices();
+
 			var material = Material.Load( "materials/voxel/voxel.vmat" );
 			mesh = new Mesh( material );
 
@@ -44,12 +59,6 @@ namespace Sandblox
 			var boundsMax = boundsMin + (ChunkSize * 32);
 			mesh.SetBounds( boundsMin, boundsMax );
 
-			for ( int i = 0; i < Slices.Length; ++i )
-			{
-				Slices[i] = new Slice();
-			}
-
-			UpdateBlockSlices();
 			Build();
 
 			model = new ModelBuilder()
@@ -58,6 +67,41 @@ namespace Sandblox
 
 			var transform = new Transform( offset * 32.0f );
 			sceneObject = new SceneObject( model, transform );
+		}
+
+		public void Read( ref NetRead read )
+		{
+			blockTypes = read.ReadUnmanagedArray( blockTypes );
+		}
+
+		public void Write( NetWrite write )
+		{
+			write.WriteUnmanagedArray( blockTypes );
+		}
+
+		public static int GetBlockIndexAtPosition( IntVector3 pos )
+		{
+			return pos.x + pos.y * ChunkSize + pos.z * ChunkSize * ChunkSize;
+		}
+
+		public byte GetBlockTypeAtPosition( IntVector3 pos )
+		{
+			return blockTypes[GetBlockIndexAtPosition( pos )];
+		}
+
+		public byte GetBlockTypeAtIndex( int index )
+		{
+			return blockTypes[index];
+		}
+
+		public void SetBlockTypeAtPosition( IntVector3 pos, byte blockType )
+		{
+			blockTypes[GetBlockIndexAtPosition( pos )] = blockType;
+		}
+
+		public void SetBlockTypeAtIndex( int index, byte blockType )
+		{
+			blockTypes[index] = blockType;
 		}
 
 		public void Delete()
@@ -209,8 +253,7 @@ namespace Sandblox
 		{
 			var p = offset + position;
 			var blockEmpty = map.IsBlockEmpty( p );
-			var blockIndex = blockEmpty ? 0 : map.GetBlockIndex( p );
-			var blockType = blockEmpty ? (byte)0 : map.GetBlockData( blockIndex );
+			var blockType = blockEmpty ? (byte)0 : map.GetBlockTypeAtPosition( p );
 
 			var face = new BlockFace
 			{
@@ -221,8 +264,8 @@ namespace Sandblox
 
 			if ( !face.culled && !map.IsAdjacentBlockEmpty( p, side ) )
 			{
-				var adjacentPosition = Map.GetAdjacentPos( p, side );
-				var adjacentBlockType = map.GetBlockData( adjacentPosition );
+				var adjacentPosition = Map.GetAdjacentBlockPosition( p, side );
+				var adjacentBlockType = map.GetBlockTypeAtPosition( adjacentPosition );
 
 				if ( adjacentBlockType != 0 )
 				{

@@ -1,53 +1,57 @@
 ﻿using Sandbox;
 using System;
-using System.Collections.Generic;
 
 namespace Sandblox
 {
-	public class Chunk
+	public partial class Chunk : Entity
 	{
 		public static readonly int ChunkSize = 32;
 
-		public byte[] blockTypes;
+		public Map Map { get; set; }
 
-		private readonly Map map;
-		private readonly IntVector3 offset;
+		[Net] public ChunkData Data { get; set; }
+		private IntVector3 Offset => Data.Offset;
 
 		private Model model;
 		private Mesh mesh;
 		private SceneObject sceneObject;
 
-		private class Slice
-		{
-			public Slice()
-			{
-				body = new PhysicsBody
-				{
-					BodyType = PhysicsBodyType.Static
-				};
-			}
-
-			public bool dirty = false;
-			public List<BlockVertex> vertices = new();
-			public List<Vector3> collisionVertices = new();
-			public List<int> collisionIndices = new();
-			public PhysicsBody body;
-			public PhysicsShape shape;
+		public Chunk() : base()
+		{		
 		}
 
-		public Chunk( Map map, IntVector3 offset )
+		public Chunk( Map map, ChunkData data )
 		{
-			this.map = map;
-			this.offset = offset;
+			Map = map;
+			Data = data;
+			Transmit = TransmitType.FullUpdateOnly;
+		}
 
-			blockTypes = new byte[ChunkSize * ChunkSize * ChunkSize];
+		private bool Initialized;
+
+		[Event.Tick.Client]
+		public void InitTick()
+		{
+			if ( Initialized )
+				return;
+
+			if ( Data != null )
+			{
+				Init();
+			}
 		}
 
 		public void Init()
 		{
+			if ( Initialized )
+				return;
+
+			if ( Data == null )
+				return;
+
 			for ( int i = 0; i < Slices.Length; ++i )
 			{
-				Slices[i] = new Slice();
+				Slices[i] = new ChunkSlice();
 			}
 
 			UpdateBlockSlices();
@@ -65,18 +69,10 @@ namespace Sandblox
 				.AddMesh( mesh )
 				.Create();
 
-			var transform = new Transform( offset * 32.0f );
+			var transform = new Transform( Offset * 32.0f );
 			sceneObject = new SceneObject( model, transform );
-		}
 
-		public void Read( ref NetRead read )
-		{
-			blockTypes = read.ReadUnmanagedArray( blockTypes );
-		}
-
-		public void Write( NetWrite write )
-		{
-			write.WriteUnmanagedArray( blockTypes );
+			Initialized = true;
 		}
 
 		public static int GetBlockIndexAtPosition( IntVector3 pos )
@@ -86,25 +82,25 @@ namespace Sandblox
 
 		public byte GetBlockTypeAtPosition( IntVector3 pos )
 		{
-			return blockTypes[GetBlockIndexAtPosition( pos )];
+			return Data.BlockTypes[GetBlockIndexAtPosition( pos )];
 		}
 
 		public byte GetBlockTypeAtIndex( int index )
 		{
-			return blockTypes[index];
+			return Data.BlockTypes[index];
 		}
 
 		public void SetBlockTypeAtPosition( IntVector3 pos, byte blockType )
 		{
-			blockTypes[GetBlockIndexAtPosition( pos )] = blockType;
+			Data.BlockTypes[GetBlockIndexAtPosition( pos )] = blockType;
 		}
 
 		public void SetBlockTypeAtIndex( int index, byte blockType )
 		{
-			blockTypes[index] = blockType;
+			Data.BlockTypes[index] = blockType;
 		}
 
-		public void Delete()
+		public void Destroy()
 		{
 			if ( sceneObject != null )
 			{
@@ -210,7 +206,7 @@ namespace Sandblox
 			2, 2, 1, 1, 0, 0
 		};
 
-		private void AddQuad( Slice slice, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
+		private void AddQuad( ChunkSlice slice, int x, int y, int z, int width, int height, int widthAxis, int heightAxis, int face, byte blockType, int brightness )
 		{
 			byte textureId = (byte)(blockType - 1);
 			byte normal = (byte)face;
@@ -228,7 +224,7 @@ namespace Sandblox
 
 				slice.vertices.Add( new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), faceData ) );
 
-				slice.collisionVertices.Add( new Vector3( (x + vOffset.x) + offset.x, (y + vOffset.y) + offset.y, (z + vOffset.z) + offset.z ) * 32.0f );
+				slice.collisionVertices.Add( new Vector3( (x + vOffset.x) + Offset.x, (y + vOffset.y) + Offset.y, (z + vOffset.z) + Offset.z ) * 32.0f );
 				slice.collisionIndices.Add( collisionIndex + i );
 			}
 		}
@@ -247,13 +243,13 @@ namespace Sandblox
 
 		static readonly BlockFace[] BlockFaceMask = new BlockFace[ChunkSize * ChunkSize * ChunkSize];
 
-		private readonly Slice[] Slices = new Slice[ChunkSize * 6];
+		private readonly ChunkSlice[] Slices = new ChunkSlice[ChunkSize * 6];
 
 		BlockFace GetBlockFace( IntVector3 position, int side )
 		{
-			var p = offset + position;
-			var blockEmpty = map.IsBlockEmpty( p );
-			var blockType = blockEmpty ? (byte)0 : map.GetBlockTypeAtPosition( p );
+			var p = Offset + position;
+			var blockEmpty = Map.IsBlockEmpty( p );
+			var blockType = blockEmpty ? (byte)0 : Map.GetBlockTypeAtPosition( p );
 
 			var face = new BlockFace
 			{
@@ -262,10 +258,10 @@ namespace Sandblox
 				type = blockType,
 			};
 
-			if ( !face.culled && !map.IsAdjacentBlockEmpty( p, side ) )
+			if ( !face.culled && !Map.IsAdjacentBlockEmpty( p, side ) )
 			{
 				var adjacentPosition = Map.GetAdjacentBlockPosition( p, side );
-				var adjacentBlockType = map.GetBlockTypeAtPosition( adjacentPosition );
+				var adjacentBlockType = Map.GetBlockTypeAtPosition( adjacentPosition );
 
 				if ( adjacentBlockType != 0 )
 				{

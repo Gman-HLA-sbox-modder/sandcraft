@@ -2,9 +2,14 @@
 
 namespace Sandblox
 {
+	public partial class TestEnt : ModelEntity
+	{
+		[Net] public int test { get; set; }
+	}
+
 	public partial class Game : Sandbox.Game
 	{
-		private Map Map { get; set; }
+		[Net] private Map Map { get; set; }
 
 		public Game()
 		{
@@ -17,14 +22,16 @@ namespace Sandblox
 		public override void Spawn()
 		{
 			base.Spawn();
+
+			Map = new Map();
+			Map.SetSize( 128, 128, 64 );
+			Map.GeneratePerlin();
 		}
 
 		public override void ClientSpawn()
 		{
 			base.ClientSpawn();
 
-			Map = new Map( 256, 256, 64 );
-			Map.GeneratePerlin();
 			Map.Init();
 		}
 
@@ -32,7 +39,7 @@ namespace Sandblox
 		{
 			base.OnDestroy();
 
-			Map.Destroy();
+			Map?.Destroy();
 		}
 
 		public override void ClientJoined( Client client )
@@ -45,9 +52,38 @@ namespace Sandblox
 			player.Respawn();
 		}
 
-		public bool SetBlock( Vector3 pos, Vector3 dir, byte blocktype )
+		public void SetBlockInDirection( Vector3 pos, Vector3 dir, byte blocktype )
 		{
-			return Map.SetBlock( pos, dir, blocktype );
+			var face = Map.GetBlockInDirection( pos * (1.0f / 32.0f), dir.Normal, 10000, out var hitpos, out _ );
+			if ( face == Map.BlockFace.Invalid )
+				return;
+
+			var blockPos = hitpos;
+
+			if ( blocktype != 0 )
+			{
+				blockPos = Map.GetAdjacentBlockPosition( blockPos, (int)face );
+			}
+
+			SetBlockOnServer( blockPos.x, blockPos.y, blockPos.z, blocktype );
+		}
+
+		public void SetBlockOnServer( int x, int y, int z, byte blocktype )
+		{
+			Host.AssertServer();
+
+			if ( Map.SetBlock( new IntVector3( x, y, z ), blocktype ) )
+			{
+				SetBlockOnClient(x, y, z, blocktype);
+			}
+		}
+
+		[ClientRpc]
+		public void SetBlockOnClient( int x, int y, int z, byte blocktype )
+		{
+			Host.AssertClient();
+
+			Map.SetBlockAndUpdate( new IntVector3( x, y, z ), blocktype );
 		}
 	}
 }

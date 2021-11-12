@@ -4,11 +4,14 @@ using System.Collections.Generic;
 
 namespace Sandblox
 {
-	public partial class Map
+	public partial class Map : BaseNetworkable
 	{
-		public int SizeX { get; private set; }
-		public int SizeY { get; private set; }
-		public int SizeZ { get; private set; }
+		[Net] public int SizeX { get; private set; }
+		[Net] public int SizeY { get; private set; }
+		[Net] public int SizeZ { get; private set; }
+
+		[Net] private IList<Chunk> Chunks { get; set; }
+		private ChunkData[] ChunkData { get; set; }
 
 		private int numChunksX;
 		private int numChunksY;
@@ -18,19 +21,19 @@ namespace Sandblox
 		public int NumChunksY => numChunksY;
 		public int NumChunksZ => numChunksZ;
 
-		private Chunk[] Chunks { get; set; }
-
-		public Map( int sizeX, int sizeY, int sizeZ )
+		public void SetSize( int sizeX, int sizeY, int sizeZ )
 		{
-			SizeX = (ushort)sizeX;
-			SizeY = (ushort)sizeY;
-			SizeZ = (ushort)sizeZ;
+			SizeX = sizeX;
+			SizeY = sizeY;
+			SizeZ = sizeZ;
+
+			Log.Info( SizeX );
 
 			numChunksX = SizeX / Chunk.ChunkSize;
 			numChunksY = SizeY / Chunk.ChunkSize;
 			numChunksZ = SizeZ / Chunk.ChunkSize;
 
-			Chunks = new Chunk[numChunksX * numChunksY * numChunksZ];
+			ChunkData = new ChunkData[numChunksX * numChunksY * numChunksZ];
 
 			for ( int x = 0; x < numChunksX; ++x )
 			{
@@ -39,8 +42,8 @@ namespace Sandblox
 					for ( int z = 0; z < numChunksZ; ++z )
 					{
 						var chunkIndex = x + y * numChunksX + z * numChunksX * numChunksY;
-						var chunk = new Chunk( this, new IntVector3( x * Chunk.ChunkSize, y * Chunk.ChunkSize, z * Chunk.ChunkSize ) );
-						Chunks[chunkIndex] = chunk;
+						var chunk = new ChunkData( new IntVector3( x * Chunk.ChunkSize, y * Chunk.ChunkSize, z * Chunk.ChunkSize ) );
+						ChunkData[chunkIndex] = chunk;
 					}
 				}
 			}
@@ -48,6 +51,10 @@ namespace Sandblox
 
 		public void Init()
 		{
+			numChunksX = SizeX / Chunk.ChunkSize;
+			numChunksY = SizeY / Chunk.ChunkSize;
+			numChunksZ = SizeZ / Chunk.ChunkSize;
+
 			if ( Chunks != null )
 			{
 				foreach ( var chunk in Chunks )
@@ -55,8 +62,17 @@ namespace Sandblox
 					if ( chunk == null )
 						continue;
 
+					chunk.Map = this;
 					chunk.Init();
 				}
+			}
+		}
+
+		private void SpawnChunks()
+		{
+			foreach ( var chunkData in ChunkData )
+			{
+				Chunks.Add( new Chunk( this, chunkData ) );
 			}
 		}
 
@@ -69,29 +85,21 @@ namespace Sandblox
 					if ( chunk == null )
 						continue;
 
-					chunk.Delete();
+					chunk.Destroy();
 				}
 			}
 		}
 
-		public bool SetBlock( Vector3 pos, Vector3 dir, byte blocktype )
+		public bool SetBlockAndUpdate( IntVector3 blockPos, byte blocktype )
 		{
-			var face = GetBlockInDirection( pos * (1.0f / 32.0f), dir.Normal, 10000, out var hitpos, out _ );
-			if ( face == BlockFace.Invalid )
-				return false;
-
-			var blockPos = hitpos;
-
-			if ( blocktype != 0 )
-			{
-				blockPos = GetAdjacentBlockPosition( blockPos, (int)face );
-			}
-
 			bool build = false;
 			var chunkids = new HashSet<int>();
 
 			if ( SetBlock( blockPos, blocktype ) )
 			{
+				if ( Host.IsServer )
+					return true;
+
 				var chunkIndex = GetBlockChunkIndexAtPosition( blockPos );
 
 				chunkids.Add( chunkIndex );
@@ -140,6 +148,7 @@ namespace Sandblox
 
 		public void GeneratePerlin()
 		{
+			Log.Info( "GeneratePerlin" );
 			for ( int x = 0; x < SizeX; ++x )
 			{
 				for ( int y = 0; y < SizeY; ++y )
@@ -154,6 +163,8 @@ namespace Sandblox
 					}
 				}
 			}
+
+			SpawnChunks();
 		}
 
 		public void GenerateGround()
@@ -172,13 +183,18 @@ namespace Sandblox
 					}
 				}
 			}
+
+			SpawnChunks();
 		}
 
 		private void SetBlockTypeAtPosition( IntVector3 pos, byte blockType )
 		{
+			if ( ChunkData == null )
+				return;
+
 			var chunkIndex = GetBlockChunkIndexAtPosition( pos );
 			var blockPositionInChunk = GetBlockPositionInChunk( pos );
-			var chunk = Chunks[chunkIndex];
+			var chunk = ChunkData[chunkIndex];
 
 			chunk.SetBlockTypeAtPosition( blockPositionInChunk, blockType );
 		}
@@ -212,6 +228,12 @@ namespace Sandblox
 			if ( (blockType != 0 && currentBlockType == 0) || (blockType == 0 && currentBlockType != 0) )
 			{
 				chunk.SetBlockTypeAtIndex( blockindex, blockType );
+
+				if ( Host.IsServer )
+				{
+					var chunkData = ChunkData[chunkIndex];
+					chunkData.WriteNetworkData();
+				}
 
 				return true;
 			}

@@ -17,25 +17,28 @@ namespace Sandblox
 			base.Respawn();
 		}
 
-		public override void BuildInput( InputBuilder input )
+		public override void Simulate( Client cl )
 		{
-			base.BuildInput( input );
+			base.Simulate( cl );
 
-			if ( (input.Down( InputButton.Duck ) ? input.Down( InputButton.Attack1 ) : input.Pressed( InputButton.Attack1 )) )
+			if ( !IsServer )
+				return;
+
+			if ( (Input.Down( InputButton.Duck ) ? Input.Down( InputButton.Attack1 ) : Input.Pressed( InputButton.Attack1 )) )
 			{
-				(Sandbox.Game.Current as Game).SetBlock( EyePos, EyeRot.Forward, (byte)Rand.Int( 1, 5 ) );
+				(Sandbox.Game.Current as Game).SetBlockInDirection( EyePos, EyeRot.Forward, (byte)Rand.Int( 1, 5 ) );
 			}
-			else if ( (input.Down( InputButton.Duck ) ? input.Down( InputButton.Attack2 ) : input.Pressed( InputButton.Attack2 )) )
+			else if ( (Input.Down( InputButton.Duck ) ? Input.Down( InputButton.Attack2 ) : Input.Pressed( InputButton.Attack2 )) )
 			{
-				(Sandbox.Game.Current as Game).SetBlock( EyePos, EyeRot.Forward, 0 );
+				(Sandbox.Game.Current as Game).SetBlockInDirection( EyePos, EyeRot.Forward, 0 );
 			}
 
-			if ( input.Down( InputButton.Jump ) )
+			if ( Input.Down( InputButton.Jump ) )
 			{
-				var r = Rotation.From( input.ViewAngles );
+				var r = Input.Rotation;
 				var ent = new Prop
 				{
-					Position = input.Position + r.Forward * 50,
+					Position = Input.Position + r.Forward * 50,
 					Rotation = r
 				};
 

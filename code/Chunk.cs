@@ -291,7 +291,7 @@ namespace Sandblox
 		{
 			var p = Offset + position;
 			var blockEmpty = Map.IsBlockEmpty( p );
-			var blockType = blockEmpty ? (byte)0 : Map.GetBlockTypeAtPosition( p );
+			var blockType = blockEmpty ? (byte)0 : IsServer ? (byte)1 : Map.GetBlockTypeAtPosition( p );
 
 			var face = new BlockFace
 			{
@@ -302,13 +302,7 @@ namespace Sandblox
 
 			if ( !face.culled && !Map.IsAdjacentBlockEmpty( p, side ) )
 			{
-				var adjacentPosition = Map.GetAdjacentBlockPosition( p, side );
-				var adjacentBlockType = Map.GetBlockTypeAtPosition( adjacentPosition );
-
-				if ( adjacentBlockType != 0 )
-				{
-					face.culled = true;
-				}
+				face.culled = true;
 			}
 
 			return face;

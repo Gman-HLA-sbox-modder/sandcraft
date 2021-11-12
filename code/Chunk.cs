@@ -17,7 +17,7 @@ namespace Sandblox
 		private SceneObject sceneObject;
 
 		public Chunk()
-		{		
+		{
 		}
 
 		public Chunk( Map map, ChunkData data )
@@ -74,51 +74,46 @@ namespace Sandblox
 
 			UpdateBlockSlices();
 
-			var material = Material.Load( "materials/voxel/voxel.vmat" );
-			mesh = new Mesh( material );
+			var modelBuilder = new ModelBuilder();
 
-			var boundsMin = Vector3.Zero;
-			var boundsMax = boundsMin + (ChunkSize * 32);
-			mesh.SetBounds( boundsMin, boundsMax );
+			if ( IsClient )
+			{
+				var material = Material.Load( "materials/voxel/voxel.vmat" );
+				mesh = new Mesh( material );
+
+				var boundsMin = Vector3.Zero;
+				var boundsMax = boundsMin + (ChunkSize * 32);
+				mesh.SetBounds( boundsMin, boundsMax );
+
+				modelBuilder.AddMesh( mesh );
+			}
 
 			Build();
 
-			model = new ModelBuilder()
-				.AddMesh( mesh )
-				.Create();
+			model = modelBuilder.Create();
 
-			var transform = new Transform( Offset * 32.0f );
-			sceneObject = new SceneObject( model, transform );
+			if ( IsClient )
+			{
+				var transform = new Transform( Offset * 32.0f );
+				sceneObject = new SceneObject( model, transform );
+			}
 
 			Initialized = true;
 		}
 
-		public static int GetBlockIndexAtPosition( IntVector3 pos )
-		{
-			return pos.x + pos.y * ChunkSize + pos.z * ChunkSize * ChunkSize;
-		}
-
-		public byte GetBlockTypeAtPosition( IntVector3 pos )
-		{
-			return Data.BlockTypes[GetBlockIndexAtPosition( pos )];
-		}
-
-		public byte GetBlockTypeAtIndex( int index )
-		{
-			return Data.BlockTypes[index];
-		}
-
-		public void SetBlockTypeAtPosition( IntVector3 pos, byte blockType )
-		{
-			Data.BlockTypes[GetBlockIndexAtPosition( pos )] = blockType;
-		}
-
-		public void SetBlockTypeAtIndex( int index, byte blockType )
-		{
-			Data.BlockTypes[index] = blockType;
-		}
-
 		public void Build()
+		{
+			if ( IsServer )
+			{
+				BuildCollision();
+			}
+			else
+			{
+				BuildMeshAndCollision();
+			}
+		}
+
+		private void BuildMeshAndCollision()
 		{
 			if ( !mesh.IsValid )
 				return;
@@ -167,6 +162,53 @@ namespace Sandblox
 			}
 
 			mesh.SetVertexRange( 0, vertexCount );
+		}
+
+		private void BuildCollision()
+		{
+			foreach ( var slice in Slices )
+			{
+				if ( slice.dirty )
+				{
+					if ( slice.shape != null )
+					{
+						slice.body.RemoveShape( slice.shape, false );
+						slice.shape = null;
+					}
+
+					if ( slice.collisionVertices.Count > 0 && slice.collisionIndices.Count > 0 )
+					{
+						slice.shape = slice.body.AddMeshShape( slice.collisionVertices.ToArray(), slice.collisionIndices.ToArray() );
+					}
+				}
+
+				slice.dirty = false;
+			}
+		}
+
+		public static int GetBlockIndexAtPosition( IntVector3 pos )
+		{
+			return pos.x + pos.y * ChunkSize + pos.z * ChunkSize * ChunkSize;
+		}
+
+		public byte GetBlockTypeAtPosition( IntVector3 pos )
+		{
+			return Data.GetBlockTypeAtPosition( pos );
+		}
+
+		public byte GetBlockTypeAtIndex( int index )
+		{
+			return Data.GetBlockTypeAtIndex( index );
+		}
+
+		public void SetBlockTypeAtPosition( IntVector3 pos, byte blockType )
+		{
+			Data.SetBlockTypeAtPosition( pos, blockType );
+		}
+
+		public void SetBlockTypeAtIndex( int index, byte blockType )
+		{
+			Data.SetBlockTypeAtIndex( index, blockType );
 		}
 
 		static readonly IntVector3[] BlockVertices = new[]

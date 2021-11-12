@@ -26,6 +26,7 @@ namespace Sandblox
 			Map = new Map();
 			Map.SetSize( 128, 128, 64 );
 			Map.GeneratePerlin();
+			Map.Init();
 		}
 
 		public override void ClientSpawn()
@@ -65,7 +66,7 @@ namespace Sandblox
 		{
 			Host.AssertServer();
 
-			if ( Map.SetBlock( new IntVector3( x, y, z ), blocktype ) )
+			if ( Map.SetBlockAndUpdate( new IntVector3( x, y, z ), blocktype ) )
 			{
 				SetBlockOnClient(x, y, z, blocktype);
 			}

@@ -81,9 +81,6 @@ namespace Sandblox
 
 			if ( SetBlock( blockPos, blocktype ) )
 			{
-				if ( Host.IsServer )
-					return true;
-
 				var chunkIndex = GetBlockChunkIndexAtPosition( blockPos );
 
 				chunkids.Add( chunkIndex );

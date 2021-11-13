@@ -128,10 +128,9 @@ namespace Sandblox
 			{
 				mesh.SetVertexBufferSize( vertexCount );
 			}
-			else
+			else if ( vertexCount > 0 )
 			{
-				// If there's no verts, just put in 1 for now (temp)
-				mesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, vertexCount ), BlockVertex.Layout );
+				mesh.CreateVertexBuffer<BlockVertex>( vertexCount, BlockVertex.Layout );
 			}
 
 			vertexCount = 0;

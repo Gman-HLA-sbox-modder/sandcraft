@@ -8,7 +8,7 @@ Layer0
 	TextureAmbientOcclusion "materials/default/default_ao.tga"
 
 	//---- Color ----
-	TextureColor "materials/default/default_color.tga"
+	TextureColor "materials/dev/dev_measuregeneric01b_color.tga"
 
 	//---- Fog ----
 	g_bFogEnabled "0"

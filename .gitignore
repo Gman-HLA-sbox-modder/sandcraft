@@ -9,3 +9,4 @@ tools_thumbnail_cache.bin
 *.dll
 *.pdb
 .intermediate/net5.0/sandblox.deps.json
+.vs/output/sbox-sandblox.deps.json

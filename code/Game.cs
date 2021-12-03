@@ -61,9 +61,12 @@ namespace Sandblox
 		{
 			Host.AssertServer();
 
-			if ( Map.SetBlockAndUpdate( new IntVector3( x, y, z ), blocktype ) )
+			var pos = new IntVector3( x, y, z );
+
+			if ( Map.SetBlockAndUpdate( pos, blocktype ) )
 			{
-				SetBlockOnClient(x, y, z, blocktype);
+				Map.WriteNetworkDataForChunkAtPosition( pos );
+				SetBlockOnClient( x, y, z, blocktype );
 			}
 		}
 
@@ -72,7 +75,7 @@ namespace Sandblox
 		{
 			Host.AssertClient();
 
-			Map.SetBlockAndUpdate( new IntVector3( x, y, z ), blocktype );
+			Map.SetBlockAndUpdate( new IntVector3( x, y, z ), blocktype, true );
 		}
 	}
 }

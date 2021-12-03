@@ -24,7 +24,7 @@ namespace Sandblox
 		{
 			Map = map;
 			Data = data;
-			Transmit = TransmitType.FullUpdateOnly;
+			Transmit = TransmitType.Always;
 		}
 
 		protected override void OnDestroy()

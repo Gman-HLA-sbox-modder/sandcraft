@@ -74,12 +74,12 @@ namespace Sandblox
 			}
 		}
 
-		public bool SetBlockAndUpdate( IntVector3 blockPos, byte blocktype )
+		public bool SetBlockAndUpdate( IntVector3 blockPos, byte blocktype, bool forceUpdate = false )
 		{
 			bool build = false;
 			var chunkids = new HashSet<int>();
 
-			if ( SetBlock( blockPos, blocktype ) )
+			if ( SetBlock( blockPos, blocktype ) || forceUpdate )
 			{
 				var chunkIndex = GetBlockChunkIndexAtPosition( blockPos );
 
@@ -188,6 +188,13 @@ namespace Sandblox
 			return chunk.GetBlockTypeAtPosition( blockPositionInChunk );
 		}
 
+		public void WriteNetworkDataForChunkAtPosition( IntVector3 pos )
+		{
+			var chunkIndex = GetBlockChunkIndexAtPosition( pos );
+			var chunkData = ChunkData[chunkIndex];
+			chunkData.WriteNetworkData();
+		}
+
 		public bool SetBlock( IntVector3 pos, byte blockType )
 		{
 			if ( pos.x < 0 || pos.x >= SizeX ) return false;
@@ -208,12 +215,6 @@ namespace Sandblox
 			if ( (blockType != 0 && currentBlockType == 0) || (blockType == 0 && currentBlockType != 0) )
 			{
 				chunk.SetBlockTypeAtIndex( blockindex, blockType );
-
-				if ( Host.IsServer )
-				{
-					var chunkData = ChunkData[chunkIndex];
-					chunkData.WriteNetworkData();
-				}
 
 				return true;
 			}

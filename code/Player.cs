@@ -32,13 +32,6 @@ namespace Sandblox
 			EnableDrawing = false;
 		}
 
-		public override void PostCameraSetup( ref CameraSetup setup )
-		{
-			Host.AssertClient();
-
-			setup.FieldOfView = 90.0f;
-		}
-
 		public override void Simulate( Client cl )
 		{
 			base.Simulate( cl );

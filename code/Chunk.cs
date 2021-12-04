@@ -40,7 +40,6 @@ namespace Sandblox
 				if ( slice == null )
 					continue;
 
-				//slice.body?.Remove();
 				slice.body = null;
 			}
 		}

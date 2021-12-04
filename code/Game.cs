@@ -14,14 +14,20 @@ namespace Sandblox
 			}
 		}
 
-		public override void Spawn()
+		public override void PostLevelLoaded()
 		{
-			base.Spawn();
+			if ( !IsServer )
+				return;
 
 			Map = new Map();
 			Map.SetSize( 256, 256, 64 );
 			Map.GeneratePerlin();
 			Map.Init();
+		}
+
+		public override void Spawn()
+		{
+			base.Spawn();
 		}
 
 		public override void ClientSpawn()

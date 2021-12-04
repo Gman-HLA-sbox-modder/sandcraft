@@ -40,7 +40,7 @@ namespace Sandblox
 				if ( slice == null )
 					continue;
 
-				slice.body?.Remove();
+				//slice.body?.Remove();
 				slice.body = null;
 			}
 		}
@@ -103,6 +103,7 @@ namespace Sandblox
 
 		public void Build()
 		{
+			Log.Info($"{Host.Name} - worldbody = {PhysicsWorld.WorldBody != null}");
 			if ( IsServer )
 			{
 				BuildCollision();
@@ -168,7 +169,7 @@ namespace Sandblox
 		{
 			foreach ( var slice in Slices )
 			{
-				if ( slice.dirty )
+				if ( slice.dirty && slice.body.IsValid() )
 				{
 					if ( slice.shape != null )
 					{

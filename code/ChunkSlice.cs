@@ -7,10 +7,7 @@ namespace Sandblox
 	{
 		public ChunkSlice()
 		{
-			body = new PhysicsBody
-			{
-				BodyType = PhysicsBodyType.Static
-			};
+			body = PhysicsWorld.WorldBody;
 		}
 
 		public bool dirty = false;

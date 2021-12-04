@@ -8,7 +8,7 @@ namespace Sandblox
 		{
 			if ( IsClient )
 			{
-				RootPanel.StyleSheet.Load( "/Hud.scss" );
+				RootPanel.SetTemplate( "/hud.html" );
 			}
 		}
 	}

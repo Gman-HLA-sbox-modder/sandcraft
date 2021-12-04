@@ -6,8 +6,11 @@ namespace Sandblox
 	{
 		public override void Respawn()
 		{
-			Controller = new NoclipController();
-			Camera = new FirstPersonCamera();
+			SetModel( "models/citizen/citizen.vmdl" );
+
+			Controller = new WalkController();
+			Animator = new StandardPlayerAnimator();
+			Camera = new ThirdPersonCamera();
 
 			EnableAllCollisions = true;
 			EnableDrawing = true;
@@ -15,6 +18,18 @@ namespace Sandblox
 			EnableShadowInFirstPerson = true;
 
 			base.Respawn();
+		}
+
+		public override void OnKilled()
+		{
+			base.OnKilled();
+
+			Controller = null;
+			Animator = null;
+			Camera = null;
+
+			EnableAllCollisions = false;
+			EnableDrawing = false;
 		}
 
 		public override void Simulate( Client cl )
@@ -33,7 +48,7 @@ namespace Sandblox
 				(Sandbox.Game.Current as Game).SetBlockInDirection( EyePos, EyeRot.Forward, 0 );
 			}
 
-			if ( Input.Down( InputButton.Jump ) )
+			if ( Input.Pressed( InputButton.Flashlight ) )
 			{
 				var r = Input.Rotation;
 				var ent = new Prop
@@ -43,7 +58,7 @@ namespace Sandblox
 				};
 
 				ent.SetModel( "models/citizen_props/crate01.vmdl" );
-				ent.Velocity = r.Forward * 4000;
+				ent.Velocity = r.Forward * 1000;
 			}
 		}
 	}

@@ -1,102 +1,76 @@
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
 HEADER
 {
 	DevShader = true;
 	CompileTargets = ( IS_SM_50 && ( PC || VULKAN ) );
 	Description = "Voxel";
-	Version = 1;
 }
 
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
+FEATURES
+{
+	#include "common/features.hlsl"
+}
+
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
 MODES
 {
 	VrForward();
-	Depth( S_MODE_DEPTH ); 
+	Depth( S_MODE_DEPTH );
 	ToolsVis( S_MODE_TOOLS_VIS );
-	ToolsShadingComplexity( S_MODE_TOOLS_SHADING_COMPLEXITY );
 	ToolsWireframe( S_MODE_TOOLS_WIREFRAME );
+	ToolsShadingComplexity( "vr_tools_shading_complexity.vfx" );
 }
 
-FEATURES
-{
-	#include "vr_shared_standard_features.fxc"
-}
-
+//=========================================================================================================================
 COMMON
 {
-	#define ENABLE_BINDLESS_RUNTIME
-	#define S_SPECULAR 0
-	#define S_METALNESS_TEXTURE 0
-	#define S_SPECULAR_CUBE_MAP 0
-	#define S_MORPH_SUPPORTED 0
-
-	#include "system.fxc"
-	#include "vr_common.fxc"
+	#include "common/shared.hlsl"
 }
 
-struct VS_INPUT
-{
-	#include "vr_shared_standard_vs_input.fxc"
-};
+//=========================================================================================================================
 
-struct VS_INPUT_VOXEL
+struct VertexInput
 {
+	#include "common/vertexinput.hlsl"
+
 	uint vData : TEXCOORD10 < Semantic( None ); >;
-
-	#if ( !USE_BINDLESS_RUNTIME )
-		float2 vTransformTextureUV : TEXCOORD13 < Semantic( InstanceTransformUv ); >;
-	#endif
 };
 
-struct PS_INPUT
+//=========================================================================================================================
+
+struct PixelInput
 {
-	#include "vr_shared_standard_ps_input.fxc"
+	#include "common/pixelinput.hlsl"
 };
+
+//=========================================================================================================================
 
 VS
 {
-	#include "vr_common_vs_code.fxc"
+	#include "common/vertex.hlsl"
 
-	StaticComboRule( Allow0( S_MORPH_SUPPORTED ) );
-	DynamicComboRule( Allow0( D_MORPH ) );
-	DynamicComboRule( Allow0( D_SKINNING ) );
-	DynamicComboRule( Allow0( D_COMPRESSED_NORMALS_AND_TANGENTS ) );
-	DynamicComboRule( Allow0( D_MULTIVIEW_INSTANCING ) );
-	
-	float3 Grayscale( float3 inputColor )
+	PixelInput MainVs( INSTANCED_SHADER_PARAMS( VertexInput i ) )
 	{
-		float gray = dot( inputColor.rgb, float3( 0.2126, 0.7152, 0.0722 ) );
-		return float3( gray, gray, gray );
-	}
-
-	void GrayscaleAmount( inout float3 inputColor, float amount )
-	{
-		inputColor.rgb = lerp( inputColor.rgb, Grayscale( inputColor ), amount );
-	}
-
-	PS_INPUT MainVs( VS_INPUT_VOXEL v )
-	{
-		float3 position = float3( float( v.vData & ( 63 ) ), float( ( v.vData >> 6 ) & ( 63 ) ), float( ( v.vData >> 12 ) & ( 63 ) ) ) * 32;
-		int texindex = int( ( v.vData >> 18 ) & ( 31 ) );
-		float brightness = ( float( ( v.vData >> 23 ) & ( 15 ) ) + 2 ) / 16.0;
-		int normal = int( ( v.vData >> 27 ) & ( 7 ) );
+		float3 position = float3( float( i.vData & ( 63 ) ), float( ( i.vData >> 6 ) & ( 63 ) ), float( ( i.vData >> 12 ) & ( 63 ) ) ) * 32;
+		int texindex = int( ( i.vData >> 18 ) & ( 31 ) );
+		float brightness = ( float( ( i.vData >> 23 ) & ( 15 ) ) + 2 ) / 16.0;
+		int normal = int( ( i.vData >> 27 ) & ( 7 ) );
 		brightness = clamp( brightness, 0, 1 );
-	
+
 		float3 color = float3( 0.75, 0.25, 0.25 );
 		if ( texindex == 1 ) color = float3( 0.25, 0.75, 0.25 );
 		else if ( texindex == 2 ) color = float3( 0.25, 0.25, 0.75 );
 		else if ( texindex == 3 ) color = float3( 0.25, 0.75, 0.75 );
 		else if ( texindex == 4 ) color = float3( 0.75, 0.75, 0.25 );
 
-		GrayscaleAmount( color, 1.0 - clamp( brightness, 0, 1 ) );
-
-		VS_INPUT i;
 		i.vPositionOs = position;
-		i.vTexCoord = float2( 0, 0 );
-
-		if ( normal == 1 ) brightness *= 0.1;
-		else if ( normal == 2 ) brightness *= 0.3;
-		else if ( normal == 3 ) brightness *= 0.6;
-		else if ( normal == 4 ) brightness *= 0.3;
-		else if ( normal == 5 ) brightness *= 0.6;
 
 		float3 vNormalOs = float3( 0, 0, 1 );
 		if ( normal == 1 ) vNormalOs = float3( 0, 0, -1 );
@@ -104,7 +78,6 @@ VS
 		else if ( normal == 3 ) vNormalOs = float3( 0, 1, 0 );
 		else if ( normal == 4 ) vNormalOs = float3( -1, 0, 0 );
 		else if ( normal == 5 ) vNormalOs = float3( 1, 0, 0 );
-		i.vNormalOs = float4( vNormalOs.xyz, 0 );
 
 		float3 vTangentOs = float3( 1, 0, 0 );
 		if ( normal == 1 ) vTangentOs = float3( 1, 0, 0 );
@@ -113,28 +86,24 @@ VS
 		else if ( normal == 4 ) vTangentOs = float3( 0, 0, -1 );
 		else if ( normal == 5 ) vTangentOs = float3( 0, 0, -1 );
 
-		float3 binormal = cross( vNormalOs, vTangentOs );
-		i.vTexCoord = float2( dot( binormal, position ), dot( vTangentOs, position ) ) * (1.0 / 32.0);
+		float3 vBinormalOs = cross( vNormalOs, vTangentOs );
+		i.vTexCoord = float2( dot( vBinormalOs, position ), dot( vTangentOs, position ) ) * ( 1.0 / 32.0 );
 
-		#if ( !USE_BINDLESS_RUNTIME )
-			i.vTransformTextureUV = v.vTransformTextureUV;
-		#endif
-
-		PS_INPUT o = VS_CommonProcessing( i );
-
-		o.vVertexColor.rgba = float4( color.rgb * (brightness * 5.0), 1 );
-
-		return VS_CommonProcessing_Post( o );
+		PixelInput o = ProcessVertex( i );
+		o.vNormalWs = vNormalOs;
+		o.vTangentUWs = vBinormalOs;
+		o.vTangentVWs = vTangentOs;
+		o.vVertexColor = float4( color.rgb, 1.0 );
+		return FinalizeVertex( o );
 	}
 }
+
+//=========================================================================================================================
 
 PS
 {
 	StaticCombo( S_MODE_DEPTH, 0..1, Sys( ALL ) );
-	StaticCombo( S_MODE_TOOLS_SHADING_COMPLEXITY, 0..1, Sys( ALL ) );
 	StaticCombo( S_MODE_TOOLS_WIREFRAME, 0..1, Sys( ALL ) );
-
-	#include "bindlessfastpath.fxc"
 
 	#if ( S_MODE_TOOLS_WIREFRAME )
 		RenderState( FillMode, WIREFRAME );
@@ -144,31 +113,28 @@ PS
 		#define DEPTH_STATE_ALREADY_SET
 	#endif
 
-	#include "vr_shared_standard_ps_code.fxc"
+	#include "common/pixel.hlsl"
 
-	PS_OUTPUT MainPs( PS_INPUT i )
+	PixelOutput MainPs( PixelInput i )
 	{
-		PS_OUTPUT o;
-
 		#if ( S_MODE_DEPTH )
 		{
-			o.vColor.rgba = float4( 0.0, 0.0, 0.0, 1.0 );	
+			PixelOutput o;
+			o.vColor.rgba = float4( 0.0, 0.0, 0.0, 1.0 );
+			return o;
 		}
 		#elif ( S_MODE_TOOLS_WIREFRAME )
 		{
+			PixelOutput o;
 			o.vColor.rgba = float4( g_vWireframeColor.rgb, 1 );
+			return o;
 		}
 		#else
-		{		
-			FinalCombinerInput_t finalCombinerInput = PS_SharedStandardProcessing( i );
-			finalCombinerInput.vRoughness = float2( 1.0, 1.0 );
-
-			LightingTerms_t lightingTerms = InitLightingTerms();
-			o = PS_FinalCombinerDoLighting( finalCombinerInput, lightingTerms );
-			o = PS_FinalCombinerDoPostProcessing( finalCombinerInput, lightingTerms, o );
+		{
+			Material m = GatherMaterial( i );
+			m.Albedo.rgb *= i.vVertexColor.rgb;
+			return FinalizePixelMaterial( i, m );
 		}
 		#endif
-
-		return o;
 	}
 }

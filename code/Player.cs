@@ -10,7 +10,7 @@ namespace Sandblox
 
 			Controller = new WalkController();
 			Animator = new StandardPlayerAnimator();
-			Camera = new ThirdPersonCamera();
+			Camera = new FirstPersonCamera();
 
 			EnableAllCollisions = true;
 			EnableDrawing = true;
@@ -32,6 +32,13 @@ namespace Sandblox
 			EnableDrawing = false;
 		}
 
+		public override void PostCameraSetup( ref CameraSetup setup )
+		{
+			Host.AssertClient();
+
+			setup.FieldOfView = 90.0f;
+		}
+
 		public override void Simulate( Client cl )
 		{
 			base.Simulate( cl );
@@ -41,11 +48,11 @@ namespace Sandblox
 
 			if ( (Input.Down( InputButton.Duck ) ? Input.Down( InputButton.Attack1 ) : Input.Pressed( InputButton.Attack1 )) )
 			{
-				(Sandbox.Game.Current as Game).SetBlockInDirection( EyePos, EyeRot.Forward, (byte)Rand.Int( 1, 5 ) );
+				(Sandbox.Game.Current as Game).SetBlockInDirection( Input.Position, Input.Rotation.Forward, (byte)Rand.Int( 1, 5 ) );
 			}
 			else if ( (Input.Down( InputButton.Duck ) ? Input.Down( InputButton.Attack2 ) : Input.Pressed( InputButton.Attack2 )) )
 			{
-				(Sandbox.Game.Current as Game).SetBlockInDirection( EyePos, EyeRot.Forward, 0 );
+				(Sandbox.Game.Current as Game).SetBlockInDirection( Input.Position, Input.Rotation.Forward, 0 );
 			}
 
 			if ( Input.Pressed( InputButton.Flashlight ) )
@@ -53,7 +60,7 @@ namespace Sandblox
 				var r = Input.Rotation;
 				var ent = new Prop
 				{
-					Position = Input.Position + r.Forward * 50,
+					Position = EyePos + r.Forward * 50,
 					Rotation = r
 				};
 

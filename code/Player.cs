@@ -46,11 +46,11 @@ namespace Sandblox
 			if ( !IsServer )
 				return;
 
-			if ( (Input.Down( InputButton.Duck ) ? Input.Down( InputButton.Attack1 ) : Input.Pressed( InputButton.Attack1 )) )
+			if ( Input.Pressed( InputButton.Attack1 ) )
 			{
 				(Sandbox.Game.Current as Game).SetBlockInDirection( Input.Position, Input.Rotation.Forward, (byte)Rand.Int( 1, 5 ) );
 			}
-			else if ( (Input.Down( InputButton.Duck ) ? Input.Down( InputButton.Attack2 ) : Input.Pressed( InputButton.Attack2 )) )
+			else if ( Input.Pressed( InputButton.Attack2 ) )
 			{
 				(Sandbox.Game.Current as Game).SetBlockInDirection( Input.Position, Input.Rotation.Forward, 0 );
 			}

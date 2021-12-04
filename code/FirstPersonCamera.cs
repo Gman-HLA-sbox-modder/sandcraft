@@ -22,6 +22,7 @@ namespace Sandblox
 			Rotation = pawn.EyeRot;
 
 			FieldOfView = 90;
+			ZNear = 5.0f;
 
 			Viewer = pawn;
 		}

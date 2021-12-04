@@ -102,7 +102,6 @@ namespace Sandblox
 
 		public void Build()
 		{
-			Log.Info($"{Host.Name} - worldbody = {PhysicsWorld.WorldBody != null}");
 			if ( IsServer )
 			{
 				BuildCollision();

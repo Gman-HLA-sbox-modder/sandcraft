@@ -6,10 +6,13 @@ namespace Sandblox
 	{
 		public HudEntity()
 		{
-			if ( IsClient )
-			{
-				RootPanel.SetTemplate( "/hud.html" );
-			}
+			if ( !IsClient )
+				return;
+
+			RootPanel.StyleSheet.Load( "/ui/Hud.scss" );
+
+			RootPanel.AddChild<ChatBoxPlus>();
+			RootPanel.AddChild<KillFeedCustom>();
 		}
 	}
 }

@@ -1,7 +1,9 @@
 ﻿using Sandbox;
+using Sandbox.UI;
 
 namespace Sandblox
 {
+	[Library( "sandcraft", Title = "SandCraft" )]
 	public partial class Game : Sandbox.Game
 	{
 		[Net] private Map Map { get; set; }
@@ -43,6 +45,9 @@ namespace Sandblox
 
 			var player = new Player();
 			client.Pawn = player;
+
+			Log.Info( $"\"{client.Name}\" has connected" );
+			ChatBox.AddInformation( To.Everyone, $"Welcome, {client.Name}!", $"avatar:{client.PlayerId}" );
 
 			player.Respawn();
 		}

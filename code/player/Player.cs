@@ -1,4 +1,5 @@
 ﻿using Sandbox;
+using Sandbox.UI;
 
 namespace Sandblox
 {
@@ -46,19 +47,6 @@ namespace Sandblox
 			else if ( Input.Pressed( InputButton.Attack2 ) )
 			{
 				(Sandbox.Game.Current as Game).SetBlockInDirection( Input.Position, Input.Rotation.Forward, 0 );
-			}
-
-			if ( Input.Pressed( InputButton.Flashlight ) )
-			{
-				var r = Input.Rotation;
-				var ent = new Prop
-				{
-					Position = EyePos + r.Forward * 50,
-					Rotation = r
-				};
-
-				ent.SetModel( "models/citizen_props/crate01.vmdl" );
-				ent.Velocity = r.Forward * 1000;
 			}
 		}
 	}

@@ -1,12 +1,11 @@
 ﻿chatboxplus {
 	position: absolute;
 	bottom: 200px;
-	left: 100px;
 	z-index: 100;
 	flex-direction: column;
-	width: 500px;
-	font-family: Poppins;
-	font-size: 13px;
+	width: 700px;
+	font-family: MinecraftRegular;
+	font-size: 19px;
 
 	textentry {
 		background-color: black;
@@ -14,13 +13,12 @@
 		color: white;
 		padding: 15px;
 		background-color: rgba( black, 0.5 );
-		font-size: 14px;
+		font-size: 19px;
 		flex-shrink: 0;
 		flex-grow: 0;
 		width: 100%;
-		border: 2px solid rgba(173, 198, 220, 0.49);
-		background-color: rgba(147, 169, 187, 0.49);
-		border-radius: 37px;
+		border: 2px solid rgba(0, 0, 0, 0.62);
+		background-color: rgba(0, 0, 0, 0.62);
 	}
 
 	.chat_canvas {
@@ -51,9 +49,8 @@ chatentryplus {
 	max-width: 100%;
 	transform: scale( 1 );
 	backdrop-filter: blur( 5px );
-	border: 2px solid rgba(173, 198, 220, 0.49);
-	background-color: rgba(147, 169, 187, 0.49);
-	border-radius: 37px;
+	border: 2px solid rgba(0, 0, 0, 0.62);
+	background-color: rgba(0, 0, 0, 0.62);
 
 	&:intro {
 		max-height: 0px;
@@ -87,14 +84,14 @@ chatentryplus {
 	.name {
 		padding-right: 20px;
 		font-weight: 600;
-		font-size: 14px;
-		color: #c0fb2e;
+		font-size: 19px;
+		color: cyan;
 		flex-shrink: 0;
 	}
 
 	.message {
 		color: #ccc;
-		font-size: 14px;
+		font-size: 19px;
 		flex-grow: 1;
 	}
 
